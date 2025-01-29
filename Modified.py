@@ -6,58 +6,49 @@ from PIL import Image
 import io
 import hashlib
 
+
 def extract_and_display_images(uploaded_file, max_width=400):
-    """
-    Extract images from an uploaded PDF file, resize them, and display them side by side.
-    
-    Parameters:
-    - uploaded_file: Uploaded PDF file object.
-    - max_width: Maximum width for resized images (default: 400 pixels).
-    """
-    # Read the file-like object into PyMuPDF
+    uploaded_file.seek(0)  # Reset file pointer
     pdf_document = fitz.open(stream=uploaded_file.read(), filetype="pdf")
-    image_hashes = set()  # To store unique image hashes
-    columns = st.columns(3)  # Change number based on how many images you want per row
-    column_idx = 0  # To keep track of the column index
+    image_hashes = set()
+    columns = st.columns(4)  # 3 images per row
+    column_idx = 0
 
     for page_num in range(len(pdf_document)):
         page = pdf_document[page_num]
         images = page.get_images(full=True)
 
+        # st.write(f"Number of images on page {page_num + 1}: {len(images)}")  # Debug info
+
         for img in images:
-            xref = img[0]
-            base_image = pdf_document.extract_image(xref)
-            image_bytes = base_image["image"]
-            img_hash = hashlib.md5(image_bytes).hexdigest()
+            try:
+                xref = img[0]
+                base_image = pdf_document.extract_image(xref)
+                image_bytes = base_image["image"]
+                img_hash = hashlib.md5(image_bytes).hexdigest()
 
-            # Skip duplicates
-            if img_hash in image_hashes:
+                if img_hash in image_hashes:
+                    continue  # Skip duplicates
+                image_hashes.add(img_hash)
+
+                # Resize image
+                image = Image.open(io.BytesIO(image_bytes))
+                width, height = image.size
+                if width > max_width:
+                    aspect_ratio = height / width
+                    image = image.resize((max_width, int(max_width * aspect_ratio)))
+
+                # Display image in columns
+                with columns[column_idx % len(columns)]:
+                    st.image(image, use_column_width=True)
+                column_idx += 1
+
+            except Exception as e:
+                st.error(f"Failed to process image on page {page_num + 1}: {e}")
                 continue
-            image_hashes.add(img_hash)
-
-            # Resize and display image
-            image = Image.open(io.BytesIO(image_bytes))
-            width, height = image.size
-
-            # Resize the image while maintaining the aspect ratio
-            if width > max_width:
-                aspect_ratio = height / width
-                new_width = max_width
-                new_height = int(new_width * aspect_ratio)
-                image = image.resize((new_width, new_height))
-
-            # Display image in columns
-            with columns[column_idx]:
-                st.image(image, use_column_width=True)
-
-            # Move to the next column
-            column_idx += 1
-
-            # If the current row is full, move to the next row
-            if column_idx >= len(columns):
-                column_idx = 0
 
     pdf_document.close()
+
 
 # Custom CSS for better styling and animations
 st.markdown("""
@@ -132,10 +123,10 @@ st.markdown("""
 with st.sidebar:
     st.header("How to Use")
     st.markdown("""
-    1. **Upload your PDF** - Start by uploading your research paper in PDF format
-    2. **Select Slide Sections** - Choose which sections to include in your presentation
-    3. **Customize Design** - Pick colors and fonts for your slides
-    4. **Generate** - Click submit to create your presentation
+    1. *Upload your PDF* - Start by uploading your research paper in PDF format
+    2. *Select Slide Sections* - Choose which sections to include in your presentation
+    3. *Customize Design* - Pick colors and fonts for your slides
+    4. *Generate* - Click submit to create your presentation
     """)
 
 # File upload section with unique key
@@ -232,4 +223,4 @@ if st.button("Generate Presentation", key="generate_btn"):
 
 # Footer
 st.markdown("---")
-st.markdown("Created with ❤️ for researchers")
+st.markdown("Created with ❤ for researchers")
