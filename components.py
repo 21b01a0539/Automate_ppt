@@ -75,6 +75,38 @@ Research Paper:{text[:4000]}"""}
         st.error(f"Error generating slide content: {e}")
         return ""
 
+def generate_slide_content_general(client, input_text, no_of_slides, sections):
+    """
+    Use OpenAI to generate slide content for general topics with improved parsing strategy.
+    """
+    try:
+        response = client.chat.completions.create(
+            model="gpt-4",
+            messages=[
+                {"role": "system", "content": "You are an expert in creating concise and professional presentation slides."},
+                {"role": "user", "content": f"""Convert the provided content into a structured presentation. 
+                The content can be from a general topic, research paper, or any other source. 
+                Generate the content for the presentation slides based on the following sections: {sections}.
+                Follow these formatting rules:
+- Title each slide with square brackets: [Slide Title]
+- Use {no_of_slides} bullet points per slide
+- Ensure the content is concise and relevant to the topic
+- Do not include long paragraphs or irrelevant information
+
+Content to be converted into slides:
+{input_text[:4000]}"""}
+            ],
+            temperature=0.3,
+            max_tokens=1500
+        )
+        
+        # Get the raw content
+        raw_content = response.choices[0].message.content
+        
+        return raw_content
+    except Exception as e:
+        st.error(f"Error generating slide content: {e}")
+        return ""
 def parse_slides(text):
     content = {}
 
