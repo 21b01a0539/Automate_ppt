@@ -1,10 +1,11 @@
 from pptx import Presentation
 from pptx.util import Pt
 from pptx.dml.color import RGBColor
+from pptx.dml.fill import FillFormat
 import streamlit as st
 import io
 
-def create_ppt(content, heading_color, heading_size, background_color, content_color, content_size, heading_font, content_font):
+def create_ppt(content, heading_color, heading_size, bg_color, content_color, content_size, heading_font, content_font):
     """
     Create a PowerPoint presentation based on the given content and style parameters.
     """
@@ -31,6 +32,12 @@ def create_ppt(content, heading_color, heading_size, background_color, content_c
         p.font.color.rgb = RGBColor(*content_color)
         p.font.name = content_font
 
+    # Set background color for the title slide
+    background = title_slide.background
+    fill = background.fill
+    fill.solid()
+    fill.fore_color.rgb = RGBColor(*bg_color)
+
     # Create content slides
     for slide_title, slide_content in content.items():
         slide = prs.slides.add_slide(prs.slide_layouts[1])  # Use the content slide layout
@@ -49,6 +56,12 @@ def create_ppt(content, heading_color, heading_size, background_color, content_c
             p.font.size = Pt(content_size)
             p.font.color.rgb = RGBColor(*content_color)
             p.font.name = content_font
+
+        # Set background color for the content slide
+        background = slide.background
+        fill = background.fill
+        fill.solid()
+        fill.fore_color.rgb = RGBColor(*bg_color)
 
     # Save presentation to BytesIO
     pptx_buffer = io.BytesIO()
@@ -136,5 +149,5 @@ def main():
         st.download_button(label="Download Presentation", data=pptx_file, file_name="generated_presentation.pptx", mime="application/vnd.openxmlformats-officedocument.presentationml.presentation")
         st.success("Presentation generated successfully!")
 
-if __name__ == "__main__":
+if __name__ == "_main_":
     main()
