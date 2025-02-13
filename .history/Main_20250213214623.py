@@ -7,6 +7,52 @@ st.set_page_config(page_title="PPT Generator", page_icon="📊", layout="wide")
 st.markdown(
     """
     <style>
+    /* Set background image */
+    .stApp {
+        background-image: url('https://images.unsplash.com/photo-1486312338219-ce68d2c6f44d?ixlib=rb-1.2.1&auto=format&fit=crop&w=1952&q=80');
+        background-size: cover;
+        background-position: center;
+    }
+    /* Style for the main heading */
+    .main-heading {
+        font-size: 48px;
+        font-weight: bold;
+        color: #ffffff;
+        text-align: center;
+        margin-top: -25px;
+        text-shadow: 2px 2px 4px #000000;
+    }
+    /* Style for buttons */
+    .stButton button {
+        background-color: orange;
+        color: white;
+        font-size: 18px;
+        padding: 12px 20px;
+        border-radius: 8px;
+        border: none;
+        width: 80%;
+        transition: background-color 0.3s ease;
+    }
+    .stButton button:hover {
+        background-color: #45a049;
+    }
+    /* Style for transparent boxes */
+    .description-box {
+        background-color: rgba(255, 255, 255, 0.7);
+        padding: 20px;
+        border-radius: 10px;
+        text-align: center;
+        color: #333333;main.py
+
+import streamlit as st
+
+# Set page config
+st.set_page_config(page_title="PPT Generator", page_icon="📊", layout="wide")
+
+# Custom CSS for styling
+st.markdown(
+    """
+    <style>
     /* Set background and global styles */
     .stApp {
         background: linear-gradient(45deg, #f6f9fc 0%, #eef2f7 100%);
@@ -168,6 +214,44 @@ st.markdown(
         .main-heading { font-size: 40px; }
         .description-box { padding: 1.5rem; }
         .description-box h3 { font-size: 24px; }
+    }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
+# Main content
+st.markdown('<div class="main-heading">Presentation Generator</div>', unsafe_allow_html=True)
+
+# Container for cards
+st.markdown('<div class="card-container">', unsafe_allow_html=True)
+
+# First card
+st.markdown(
+    '<div class="description-box">'
+    '<h3>Research Paper to Presentation</h3>'
+    '<p>Transform your academic papers into engaging presentations automatically. Our AI-powered tool analyzes your research and creates professional slides with key insights.</p>'
+    '</div>',
+    unsafe_allow_html=True,
+)
+if st.button("Create from Research Paper"):
+    st.switch_page("pages/researchpaper_to_ppt.py")
+
+# Second card
+st.markdown(
+    '<div class="description-box">'
+    '<h3>Voice to Presentation</h3>'
+    '<p>Convert your spoken ideas into polished presentations. Simply record or upload your voice, and watch as it transforms into organized, visually appealing slides.</p>'
+    '</div>',
+    unsafe_allow_html=True,
+)
+if st.button("Create from Voice"):
+    st.switch_page("pages/speech_to_ppt.py")
+
+st.markdown('</div>', unsafe_allow_html=True)
+        font-size: 16px;
+        font-weight: bold;
+        width: 80%;
     }
     </style>
     """,

@@ -7,171 +7,58 @@ from components import generate_slide_content_general
 # Custom CSS for better styling and animations
 st.markdown("""
     <style>
-    /* Modern clean styling */
-    .stApp {
-        background: linear-gradient(135deg, #EEF2FF 0%, #E6E9F5 100%);
+    /* General Styling */
+    .main {
+        padding: 2rem;
+        background: linear-gradient(to bottom, #f0f4fc, #ffffff);
+        animation: fadeIn 1s;
     }
-
-    /* Title styling */
-    h1 {
-        font-family: 'Playfair Display', serif;
-        font-size: 3.2rem;
-        background: linear-gradient(120deg, #2B3A67, #4E6E81);
-        -webkit-background-clip: text;
-        background-clip: text;
-        color: transparent;
+    
+    .stTitle {
+        color: #2E4057;
         text-align: center;
-        margin: 2rem 0;
-        animation: fadeIn 1s ease-out;
+        padding-bottom: 2rem;
+        font-size: 2.5rem;
+        font-weight: bold;
+        animation: slideDown 1s;
     }
-
-    /* Subheader styling */
-    h2, h3, .subheader {
-        font-family: 'Montserrat', sans-serif;
-        color: #2B3A67;
+    
+    .section-header {
+        background-color: #f0f2f6;
+        padding: 1rem;
+        border-radius: 5px;
         margin: 1rem 0;
-        font-weight: 600;
-        animation: slideIn 0.5s ease-out;
+        animation: fadeIn 1s ease-in-out;
     }
-
-    /* Input container styling */
-    .stTextInput > div, .stTextArea > div {
-        background: white;
-        border-radius: 12px;
-        padding: 0.5rem;
-        border: 2px solid #E6E9F5;
-        box-shadow: 0 4px 6px rgba(43, 58, 103, 0.1);
-        transition: all 0.3s ease;
-        animation: fadeIn 0.5s ease-out;
-    }
-
-    .stTextInput > div:focus-within, .stTextArea > div:focus-within {
-        border-color: #2B3A67;
-        box-shadow: 0 8px 12px rgba(43, 58, 103, 0.15);
-        transform: translateY(-2px);
-    }
-
-    /* Button styling */
+    
     .stButton > button {
-        background: linear-gradient(135deg, #2B3A67 0%, #4E6E81 100%);
+        background-color: #4CAF50;
         color: white;
-        padding: 0.6rem 1.5rem;
-        border-radius: 10px;
-        border: none;
-        font-family: 'Montserrat', sans-serif;
-        font-weight: 500;
+        font-size: 1rem;
+        padding: 0.5rem 1rem;
+        border-radius: 8px;
         transition: all 0.3s ease;
-        box-shadow: 0 4px 6px rgba(43, 58, 103, 0.2);
-        animation: fadeIn 0.5s ease-out;
     }
-
     .stButton > button:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 6px 8px rgba(43, 58, 103, 0.25);
-        background: linear-gradient(135deg, #4E6E81 0%, #2B3A67 100%);
+        background-color: #45a049;
+        transform: scale(1.05);
     }
 
-    /* Recording button special styling */
-    button[data-testid="baseButton-secondary"] {
-        background: linear-gradient(135deg, #FF6B6B 0%, #EE5253 100%);
-        animation: pulse 2s infinite;
-    }
-
-    /* Select box styling */
-    .stSelectbox > div > div {
-        background: white;
-        border-radius: 10px;
-        border: 2px solid #E6E9F5;
-        transition: all 0.3s ease;
-    }
-
-    .stSelectbox > div > div:hover {
-        border-color: #2B3A67;
-    }
-
-    /* Slider styling */
-    .stSlider > div > div {
-        background-color: #E6E9F5;
-    }
-
-    .stSlider > div > div > div {
-        background-color: #2B3A67;
-    }
-
-    /* Color picker styling */
-    .stColorPicker > div > div {
-        border-radius: 10px;
-        overflow: hidden;
-        border: 2px solid #E6E9F5;
+    .stColorPicker > label {
+        font-weight: bold;
     }
 
     /* Animations */
     @keyframes fadeIn {
-        from {
-            opacity: 0;
-            transform: translateY(10px);
-        }
-        to {
-            opacity: 1;
-            transform: translateY(0);
-        }
+        from { opacity: 0; }
+        to { opacity: 1; }
     }
 
-    @keyframes slideIn {
-        from {
-            opacity: 0;
-            transform: translateX(-20px);
-        }
-        to {
-            opacity: 1;
-            transform: translateX(0);
-        }
+    @keyframes slideDown {
+        from { transform: translateY(-20px); opacity: 0; }
+        to { transform: translateY(0); opacity: 1; }
     }
 
-    @keyframes pulse {
-        0% {
-            box-shadow: 0 0 0 0 rgba(238, 82, 83, 0.4);
-        }
-        70% {
-            box-shadow: 0 0 0 10px rgba(238, 82, 83, 0);
-        }
-        100% {
-            box-shadow: 0 0 0 0 rgba(238, 82, 83, 0);
-        }
-    }
-
-    /* Responsive adjustments */
-    @media (max-width: 768px) {
-        h1 {
-            font-size: 2.5rem;
-        }
-        .stButton > button {
-            width: 100%;
-            padding: 0.8rem;
-        }
-    }
-
-    /* Remove empty spaces */
-    .block-container {
-        padding-top: 1rem;
-        padding-bottom: 1rem;
-        max-width: 1000px;
-        margin: 0 auto;
-    }
-
-    .stMarkdown {
-        margin-bottom: 0.5rem;
-    }
-
-    /* Add subtle dividers between sections */
-    .element-container {
-        border-bottom: 1px solid rgba(43, 58, 103, 0.1);
-        padding: 1rem 0;
-    }
-
-    .element-container:last-child {
-        border-bottom: none;
-    }
     </style>
 """, unsafe_allow_html=True)
 

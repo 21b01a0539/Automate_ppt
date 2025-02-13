@@ -174,38 +174,32 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-# Main heading
-st.markdown('<div class="main-heading">PPT Generator</div>', unsafe_allow_html=True)
+# Main content
+st.markdown('<div class="main-heading">Presentation Generator</div>', unsafe_allow_html=True)
 
-# Top-left section for Research Paper PPT
-col1, col2 = st.columns([1, 1])
+# Container for cards
+st.markdown('<div class="card-container">', unsafe_allow_html=True)
 
-with col1:
-    st.markdown(
-        '<div class="description-box">'
-        '<h3>PPT from Research Paper</h3>'
-        '<p>Upload a research paper and generate a professional PowerPoint presentation. Customize the content, layout, and design to suit your needs.</p>'
-        '</div>',
-        unsafe_allow_html=True,
-    )
-    st.markdown("<br>", unsafe_allow_html=True)  # Adding space before the button
-    if st.button("Generate PPT using Research Paper"):
-        st.switch_page("pages/researchpaper_to_ppt.py")  # Ensure correct lowercase filename
+# First card
+st.markdown(
+    '<div class="description-box">'
+    '<h3>Research Paper to Presentation</h3>'
+    '<p>Transform your academic papers into engaging presentations automatically. Our AI-powered tool analyzes your research and creates professional slides with key insights.</p>'
+    '</div>',
+    unsafe_allow_html=True,
+)
+if st.button("Create from Research Paper"):
+    st.switch_page("pages/researchpaper_to_ppt.py")
 
-# Empty space to push the next section to the bottom
-st.write("\n\n\n\n\n\n\n\n\n")
+# Second card
+st.markdown(
+    '<div class="description-box">'
+    '<h3>Voice to Presentation</h3>'
+    '<p>Convert your spoken ideas into polished presentations. Simply record or upload your voice, and watch as it transforms into organized, visually appealing slides.</p>'
+    '</div>',
+    unsafe_allow_html=True,
+)
+if st.button("Create from Voice"):
+    st.switch_page("pages/speech_to_ppt.py")
 
-# Bottom-right section for Voice PPT
-col3, col4 = st.columns([1, 1])
-
-with col4:
-    st.markdown(
-        '<div class="description-box">'
-        '<h3>PPT from Voice</h3>'
-        '<p>Record your voice or provide text to create a PowerPoint presentation. Our tool will transcribe and organize your content into slides.</p>'
-        '</div>',
-        unsafe_allow_html=True,
-    )
-    st.markdown("<br>", unsafe_allow_html=True)  # Adding space before the button
-    if st.button("Generate PPT using Voice"):
-        st.switch_page("pages/speech_to_ppt.py")
+st.markdown('</div>', unsafe_allow_html=True)

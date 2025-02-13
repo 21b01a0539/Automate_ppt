@@ -50,7 +50,7 @@ def extract_and_display_images(uploaded_file, max_width=400):
     pdf_document.close()
 
 
-# Custom CSS matching speech_to_ppt.py
+# Custom CSS for better styling and animations
 st.markdown("""
     <style>
     /* Modern clean styling */
@@ -82,17 +82,17 @@ st.markdown("""
 
     /* File uploader styling */
     .stFileUploader > div {
-        background: white !important;
-        border-radius: 12px !important;
-        padding: 1rem !important;
-        border: 2px dashed #4E6E81 !important;
+        background: white;
+        border-radius: 12px;
+        padding: 1rem;
+        border: 2px dashed #4E6E81;
         transition: all 0.3s ease;
         animation: fadeIn 0.5s ease-out;
     }
 
     .stFileUploader > div:hover {
-        border-color: #2B3A67 !important;
-        background: rgba(255, 255, 255, 0.9) !important;
+        border-color: #2B3A67;
+        background: rgba(255, 255, 255, 0.9);
     }
 
     /* Input container styling */
@@ -132,9 +132,8 @@ st.markdown("""
         background: linear-gradient(135deg, #4E6E81 0%, #2B3A67 100%);
     }
 
-    /* Select box and other input styling */
-    .stSelectbox > div > div,
-    .stColorPicker > div > div {
+    /* Select box styling */
+    .stSelectbox > div > div {
         background: white;
         border-radius: 10px;
         border: 2px solid #E6E9F5;
@@ -145,22 +144,56 @@ st.markdown("""
         border-color: #2B3A67;
     }
 
-    /* Remove empty spaces */
-    .block-container {
-        padding-top: 1rem !important;
-        padding-bottom: 1rem !important;
-        max-width: 1000px !important;
-        margin: 0 auto !important;
+    /* Slider styling */
+    .stSlider > div > div {
+        background-color: #E6E9F5;
     }
 
-    .element-container {
-        margin: 0 !important;
-        padding: 1rem 0 !important;
-        border-bottom: 1px solid rgba(43, 58, 103, 0.1);
+    .stSlider > div > div > div {
+        background-color: #2B3A67;
     }
 
-    .element-container:last-child {
-        border-bottom: none;
+    /* Color picker styling */
+    .stColorPicker > div > div {
+        border-radius: 10px;
+        overflow: hidden;
+        border: 2px solid #E6E9F5;
+    }
+
+    /* Expander styling */
+    .streamlit-expanderHeader {
+        background: white;
+        border-radius: 10px;
+        border: 2px solid #E6E9F5;
+        transition: all 0.3s ease;
+    }
+
+    .streamlit-expanderHeader:hover {
+        background: rgba(255, 255, 255, 0.9);
+        border-color: #2B3A67;
+    }
+
+    /* Sidebar styling */
+    .css-1d391kg {
+        background: rgba(255, 255, 255, 0.9);
+        backdrop-filter: blur(10px);
+    }
+
+    /* Card container for sections */
+    .section-card {
+        background: white;
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin: 1rem 0;
+        box-shadow: 0 4px 6px rgba(43, 58, 103, 0.1);
+        border: 1px solid #E6E9F5;
+        transition: all 0.3s ease;
+        animation: slideUp 0.5s ease-out;
+    }
+
+    .section-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 12px rgba(43, 58, 103, 0.15);
     }
 
     /* Animations */
@@ -186,37 +219,41 @@ st.markdown("""
         }
     }
 
+    @keyframes slideUp {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    /* Remove empty spaces */
+    .block-container {
+        padding-top: 1rem;
+        padding-bottom: 1rem;
+        max-width: 1000px;
+        margin: 0 auto;
+    }
+
+    .stMarkdown {
+        margin-bottom: 0.5rem;
+    }
+
     /* Responsive adjustments */
     @media (max-width: 768px) {
         h1 {
             font-size: 2.5rem;
         }
+        .section-card {
+            padding: 1rem;
+        }
         .stButton > button {
             width: 100%;
             padding: 0.8rem;
         }
-    }
-
-    /* Expander styling */
-    .streamlit-expanderHeader {
-        background: white;
-        border-radius: 10px;
-        border: 2px solid #E6E9F5;
-        transition: all 0.3s ease;
-    }
-
-    /* Remove default streamlit margins */
-    .css-1544g2n {
-        padding: 0 !important;
-    }
-
-    .css-1y4p8pa {
-        padding: 0 !important;
-    }
-
-    /* Sidebar styling */
-    .css-1d391kg {
-        background: none;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -225,8 +262,8 @@ st.markdown("""
 if 'combined_text' not in st.session_state:
     st.session_state['combined_text'] = ""
 
-# Main title
-st.title("Research Paper to Presentation")
+# Main title with description
+st.markdown('<h1>Research Paper to Presentation</h1>', unsafe_allow_html=True)
 st.markdown("""
     Transform your research paper into professional presentation slides easily!
     Follow the steps below to generate your customized presentation.
@@ -234,24 +271,31 @@ st.markdown("""
 
 # Sidebar with instructions
 with st.sidebar:
+    st.markdown('<div class="section-card">', unsafe_allow_html=True)
     st.header("How to Use")
     st.markdown("""
-    1. *Upload your PDF* - Start by uploading your research paper
-    2. *Select Slide Sections* - Choose which sections to include
-    3. *Customize Design* - Pick colors and fonts
-    4. *Generate* - Create your presentation
+    1. *Upload your PDF* - Start by uploading your research paper in PDF format
+    2. *Select Slide Sections* - Choose which sections to include in your presentation
+    3. *Customize Design* - Pick colors and fonts for your slides
+    4. *Generate* - Click submit to create your presentation
     """)
+    st.markdown('</div>', unsafe_allow_html=True)
 
-# File upload section
+# File upload section with unique key
+st.markdown('<div class="section-card">', unsafe_allow_html=True)
 st.header("Upload Research Paper")
-uploaded_file = st.file_uploader("Upload a PDF file", type=["pdf"])
+uploaded_file = st.file_uploader("Upload a PDF file", type=["pdf"], key="pdf_uploader")
 
+pdf_text = ""
 if uploaded_file is not None:
     pdf_text = extract_pdf_text(uploaded_file)
+    # extract_and_display_images(uploaded_file)
     with st.expander("View Extracted PDF Text"):
-        st.text_area("Extracted Content:", pdf_text, height=200)
+        st.text_area("Extracted Content:", pdf_text, height=200, key="extracted_text")
+    st.markdown('</div>', unsafe_allow_html=True)
 
 # Slide structure selection with unique key
+st.markdown('<div class="section-card">', unsafe_allow_html=True)
 st.header("Enter Slide Titles")
 st.write("You can specify the slides you need for your presentation by listing their titles below.")
 
@@ -268,8 +312,10 @@ if slide_titles_input.strip():
         st.write(f"{i}. {title}")
 else:
     st.write("No slide titles entered yet.")
+    st.markdown('</div>', unsafe_allow_html=True)
 
 # Design customization with unique keys
+st.markdown('<div class="section-card">', unsafe_allow_html=True)
 st.header("Customize Design")
 col3, col4, col5 = st.columns(3)
 

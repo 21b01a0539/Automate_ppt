@@ -1,56 +1,12 @@
+speech to text
+
 import streamlit as st
-from components import extract_pdf_text, get_openai_client, generate_slide_content, parse_slides
+from components import get_openai_client, parse_slides
 from ppt import create_ppt
-import fitz  # PyMuPDF library
-from PIL import Image
-import io
-import hashlib
+import speech_recognition as sr
+from components import generate_slide_content_general
 
-
-def extract_and_display_images(uploaded_file, max_width=400):
-    uploaded_file.seek(0)  # Reset file pointer
-    pdf_document = fitz.open(stream=uploaded_file.read(), filetype="pdf")
-    image_hashes = set()
-    columns = st.columns(4)  # 3 images per row
-    column_idx = 0
-
-    for page_num in range(len(pdf_document)):
-        page = pdf_document[page_num]
-        images = page.get_images(full=True)
-
-        # st.write(f"Number of images on page {page_num + 1}: {len(images)}")  # Debug info
-
-        for img in images:
-            try:
-                xref = img[0]
-                base_image = pdf_document.extract_image(xref)
-                image_bytes = base_image["image"]
-                img_hash = hashlib.md5(image_bytes).hexdigest()
-
-                if img_hash in image_hashes:
-                    continue  # Skip duplicates
-                image_hashes.add(img_hash)
-
-                # Resize image
-                image = Image.open(io.BytesIO(image_bytes))
-                width, height = image.size
-                if width > max_width:
-                    aspect_ratio = height / width
-                    image = image.resize((max_width, int(max_width * aspect_ratio)))
-
-                # Display image in columns
-                with columns[column_idx % len(columns)]:
-                    st.image(image, use_column_width=True)
-                column_idx += 1
-
-            except Exception as e:
-                st.error(f"Failed to process image on page {page_num + 1}: {e}")
-                continue
-
-    pdf_document.close()
-
-
-# Custom CSS matching speech_to_ppt.py
+# Custom CSS for better styling and animations
 st.markdown("""
     <style>
     /* Modern clean styling */
@@ -78,21 +34,6 @@ st.markdown("""
         margin: 1rem 0;
         font-weight: 600;
         animation: slideIn 0.5s ease-out;
-    }
-
-    /* File uploader styling */
-    .stFileUploader > div {
-        background: white !important;
-        border-radius: 12px !important;
-        padding: 1rem !important;
-        border: 2px dashed #4E6E81 !important;
-        transition: all 0.3s ease;
-        animation: fadeIn 0.5s ease-out;
-    }
-
-    .stFileUploader > div:hover {
-        border-color: #2B3A67 !important;
-        background: rgba(255, 255, 255, 0.9) !important;
     }
 
     /* Input container styling */
@@ -132,9 +73,14 @@ st.markdown("""
         background: linear-gradient(135deg, #4E6E81 0%, #2B3A67 100%);
     }
 
-    /* Select box and other input styling */
-    .stSelectbox > div > div,
-    .stColorPicker > div > div {
+    /* Recording button special styling */
+    button[data-testid="baseButton-secondary"] {
+        background: linear-gradient(135deg, #FF6B6B 0%, #EE5253 100%);
+        animation: pulse 2s infinite;
+    }
+
+    /* Select box styling */
+    .stSelectbox > div > div {
         background: white;
         border-radius: 10px;
         border: 2px solid #E6E9F5;
@@ -145,22 +91,20 @@ st.markdown("""
         border-color: #2B3A67;
     }
 
-    /* Remove empty spaces */
-    .block-container {
-        padding-top: 1rem !important;
-        padding-bottom: 1rem !important;
-        max-width: 1000px !important;
-        margin: 0 auto !important;
+    /* Slider styling */
+    .stSlider > div > div {
+        background-color: #E6E9F5;
     }
 
-    .element-container {
-        margin: 0 !important;
-        padding: 1rem 0 !important;
-        border-bottom: 1px solid rgba(43, 58, 103, 0.1);
+    .stSlider > div > div > div {
+        background-color: #2B3A67;
     }
 
-    .element-container:last-child {
-        border-bottom: none;
+    /* Color picker styling */
+    .stColorPicker > div > div {
+        border-radius: 10px;
+        overflow: hidden;
+        border: 2px solid #E6E9F5;
     }
 
     /* Animations */
@@ -186,6 +130,18 @@ st.markdown("""
         }
     }
 
+    @keyframes pulse {
+        0% {
+            box-shadow: 0 0 0 0 rgba(238, 82, 83, 0.4);
+        }
+        70% {
+            box-shadow: 0 0 0 10px rgba(238, 82, 83, 0);
+        }
+        100% {
+            box-shadow: 0 0 0 0 rgba(238, 82, 83, 0);
+        }
+    }
+
     /* Responsive adjustments */
     @media (max-width: 768px) {
         h1 {
@@ -197,26 +153,26 @@ st.markdown("""
         }
     }
 
-    /* Expander styling */
-    .streamlit-expanderHeader {
-        background: white;
-        border-radius: 10px;
-        border: 2px solid #E6E9F5;
-        transition: all 0.3s ease;
+    /* Remove empty spaces */
+    .block-container {
+        padding-top: 1rem;
+        padding-bottom: 1rem;
+        max-width: 1000px;
+        margin: 0 auto;
     }
 
-    /* Remove default streamlit margins */
-    .css-1544g2n {
-        padding: 0 !important;
+    .stMarkdown {
+        margin-bottom: 0.5rem;
     }
 
-    .css-1y4p8pa {
-        padding: 0 !important;
+    /* Add subtle dividers between sections */
+    .element-container {
+        border-bottom: 1px solid rgba(43, 58, 103, 0.1);
+        padding: 1rem 0;
     }
 
-    /* Sidebar styling */
-    .css-1d391kg {
-        background: none;
+    .element-container:last-child {
+        border-bottom: none;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -224,11 +180,42 @@ st.markdown("""
 # Initialize session state for storing data between reruns
 if 'combined_text' not in st.session_state:
     st.session_state['combined_text'] = ""
+if 'transcribed_text' not in st.session_state:
+    st.session_state['transcribed_text'] = ""
+if 'final_text' not in st.session_state:
+    st.session_state['final_text'] = ""
+if 'is_recording' not in st.session_state:
+    st.session_state['is_recording'] = False
+if 'audio_recorder' not in st.session_state:
+    st.session_state['audio_recorder'] = sr.Recognizer()
 
-# Main title
-st.title("Research Paper to Presentation")
+def start_listening():
+    """Listen continuously until user stops speaking"""
+    st.session_state['is_recording'] = True
+    st.session_state['transcribed_text'] = ""
+
+    with sr.Microphone() as source:
+        st.session_state['audio_recorder'].adjust_for_ambient_noise(source)
+        st.info("🎙 Listening... Speak now.")
+
+        try:
+            audio = st.session_state['audio_recorder'].listen(source, timeout=10, phrase_time_limit=15)
+            recognized_text = st.session_state['audio_recorder'].recognize_google(audio)
+            st.session_state['transcribed_text'] = recognized_text
+            st.session_state['topic_input'] = recognized_text
+        except sr.UnknownValueError:
+            st.warning("Couldn't understand the speech. Please try again.")
+        except sr.RequestError as e:
+            st.error(f"Speech recognition request failed: {e}")
+        except Exception as e:
+            st.error(f"Error accessing microphone: {e}")
+        finally:
+            st.session_state['is_recording'] = False
+
+# Main title with description
+st.title("Live Speech to Presentation Generator")
 st.markdown("""
-    Transform your research paper into professional presentation slides easily!
+    Transform your live speech into professional presentation slides easily!
     Follow the steps below to generate your customized presentation.
 """)
 
@@ -236,20 +223,33 @@ st.markdown("""
 with st.sidebar:
     st.header("How to Use")
     st.markdown("""
-    1. *Upload your PDF* - Start by uploading your research paper
-    2. *Select Slide Sections* - Choose which sections to include
-    3. *Customize Design* - Pick colors and fonts
-    4. *Generate* - Create your presentation
+    1. *Record Live Speech* - Click the "Start Recording" button and speak into your microphone.
+    2. *Select Slide Sections* - Choose which sections to include in your presentation.
+    3. *Customize Design* - Pick colors and fonts for your slides.
+    4. *Generate* - Click submit to create your presentation.
     """)
 
-# File upload section
-st.header("Upload Research Paper")
-uploaded_file = st.file_uploader("Upload a PDF file", type=["pdf"])
+# UI for Voice Input
+st.header("Enter Presentation Topic")
+col1, col2 = st.columns([5, 1])
 
-if uploaded_file is not None:
-    pdf_text = extract_pdf_text(uploaded_file)
-    with st.expander("View Extracted PDF Text"):
-        st.text_area("Extracted Content:", pdf_text, height=200)
+with col1:
+    topic = st.text_input(
+        "Enter the topic of your presentation:",
+        placeholder="e.g., Artificial Intelligence in Healthcare",
+        key="topic_input"
+    )
+
+with col2:
+    if st.session_state.get('is_recording', False):
+        if st.button("🔴 Stop Recording", key="stop_mic"):
+            st.session_state['is_recording'] = False
+    else:
+        if st.button("🎤 Start Voice Input", key="start_mic", on_click=start_listening):
+            pass
+
+if st.session_state.get('transcribed_text', ""):
+    st.markdown(f"*Recognized Text:* {st.session_state['transcribed_text']}")
 
 # Slide structure selection with unique key
 st.header("Enter Slide Titles")
@@ -318,10 +318,8 @@ if st.button("Generate Presentation", key="generate_btn"):
     if not client:
         st.warning("Please enter a valid OpenAI API Key")
     else:
-        st.title("Extracted Images")
-        extract_and_display_images(uploaded_file)
         with st.spinner('Processing your presentation...'):
-            slide_contents = generate_slide_content(client, pdf_text, "3", slide_titles)
+            slide_contents = generate_slide_content_general(client, topic, "3", slide_titles)
             text = parse_slides(slide_contents)
             st.text_area("Slide Contents:", slide_contents, height=200, key="slide_contents")
             pptx_file = create_ppt(text, heading_rgb, heading_size, bg_rgb, content_rgb, content_size, heading_font, content_font)
