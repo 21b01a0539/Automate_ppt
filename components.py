@@ -8,6 +8,9 @@ from PIL import Image
 import hashlib
 from openai import OpenAI
 from dotenv import load_dotenv
+from urllib.request import urlopen
+import requests
+from io import BytesIO
 load_dotenv()
 
 def extract_pdf_text(uploaded_file):
@@ -188,3 +191,123 @@ def extract_and_display_images(uploaded_file, max_width=400):
                 column_idx = 0
 
     pdf_document.close()
+
+def get_relevant_image(topic, api_key=None):
+    """Get a relevant image from Pexels based on slide title and context"""
+    try:
+        pexels_api_key = "pYdOIXG0gmI8pymPsfhRh8V5OeGjOfPB1eHUNGprIE0Qz4fazw2aS5yx"
+        
+        # Clean and process the topic/title
+        search_topic = topic.replace("[", "").replace("]", "").split(":")[0].strip().lower()
+        
+        # Comprehensive mapping of slide titles to relevant search terms
+        title_mapping = {
+            # Title and Introduction slides
+            "title": "professional business presentation podium",
+            "introduction": "business introduction meeting professional",
+            
+            # Research-related slides
+            "research": "scientific research laboratory",
+            "methodology": "scientific research method laboratory",
+            "methods": "research methodology science",
+            "experiment": "scientific experiment laboratory",
+            "hypothesis": "scientific hypothesis research",
+            
+            # Results and Analysis
+            "results": "data analysis business chart",
+            "analysis": "data analytics dashboard",
+            "findings": "research findings presentation",
+            "data": "data visualization analytics",
+            
+            # Discussion and Conclusion
+            "discussion": "team business discussion meeting",
+            "conclusion": "business conclusion handshake",
+            "summary": "business summary presentation",
+            
+            # Future and Recommendations
+            "future work": "future technology innovation",
+            "recommendations": "business recommendation strategy",
+            "future": "futuristic technology innovation",
+            
+            # Common sections
+            "background": "relevant background context",
+            "objectives": "target goals business",
+            "literature review": "research library books",
+            "implementation": "project implementation process",
+            "evaluation": "evaluation assessment metrics",
+            
+            # Specific topics
+            "technology": "modern technology innovation",
+            "education": "modern education classroom",
+            "healthcare": "modern healthcare medical",
+            "environment": "environmental sustainability nature",
+            "business": "professional business corporate",
+            "science": "scientific research laboratory",
+            "engineering": "engineering technology design",
+            "artificial intelligence": "AI technology digital",
+            "machine learning": "machine learning AI technology",
+            "data science": "data science analytics",
+            
+            # Closing slides
+            "thank you": "thank you presentation professional",
+            "questions": "questions and answers discussion",
+            "references": "research library references",
+            "appendix": "additional information appendix"
+        }
+        
+        # Extract keywords from the title for better context
+        words = search_topic.split()
+        search_terms = []
+        
+        # Check for exact matches first
+        if search_topic in title_mapping:
+            search_terms.append(title_mapping[search_topic])
+        else:
+            # Check for partial matches and combine relevant terms
+            for word in words:
+                if word in title_mapping:
+                    search_terms.append(title_mapping[word])
+            
+            # If no matches found, use the cleaned title with professional context
+            if not search_terms:
+                search_terms.append(f"{search_topic} professional business")
+        
+        # Try each search term until we find an image
+        for search_term in search_terms:
+            print(f"Trying search term: {search_term}")
+            
+            url = "https://api.pexels.com/v1/search"
+            headers = {"Authorization": pexels_api_key}
+            params = {
+                "query": search_term,
+                "per_page": 1,
+                "orientation": "landscape",
+                "size": "large"
+            }
+            
+            response = requests.get(url, headers=headers, params=params)
+            if response.status_code == 200:
+                data = response.json()
+                if data.get("photos"):
+                    image_url = data["photos"][0]["src"]["large"]
+                    image_response = requests.get(image_url)
+                    if image_response.status_code == 200:
+                        print(f"Found image for term: {search_term}")
+                        return BytesIO(image_response.content)
+        
+        # Fallback to a generic professional image if no matches found
+        print("No specific images found, using fallback...")
+        params["query"] = "professional business presentation"
+        response = requests.get(url, headers=headers, params=params)
+        data = response.json()
+        if data.get("photos"):
+            image_url = data["photos"][0]["src"]["large"]
+            image_response = requests.get(image_url)
+            if image_response.status_code == 200:
+                return BytesIO(image_response.content)
+        
+        return None
+            
+    except Exception as e:
+        print(f"Error in get_relevant_image: {str(e)}")
+        return None

@@ -1,19 +1,24 @@
+# Import Streamlit library for creating web applications
 import streamlit as st
 
-# Set page config
-st.set_page_config(page_title="PPT Generator", page_icon="📊", layout="wide")
+# Configure the webpage settings
+st.set_page_config(
+    page_title="PPT Generator",  # Set browser tab title
+    page_icon="📊",             # Set browser tab icon
+    layout="wide"               # Use wide layout for better space utilization
+)
 
-# Custom CSS for styling
+# Define custom CSS styling for the application
 st.markdown(
     """
     <style>
-    /* Set background and global styles */
+    /* Set the main background with a gradient effect */
     .stApp {
         background: linear-gradient(45deg, #f6f9fc 0%, #eef2f7 100%);
-        min-height: 100vh;
+        min-height: 100vh;  /* Ensure full viewport height */
     }
 
-    /* Main heading with animated gradient */
+    /* Style for main title with animated gradient effect */
     .main-heading {
         font-family: 'Cormorant Garamond', serif;
         font-size: 65px;
@@ -28,7 +33,7 @@ st.markdown(
         text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
     }
 
-    /* Card container with perspective */
+    /* Container for card elements with 3D effect */
     .card-container {
         perspective: 1000px;
         padding: 2rem;
@@ -36,7 +41,7 @@ st.markdown(
         margin: 0 auto;
     }
 
-    /* Enhanced description box */
+    /* Styling for description boxes */
     .description-box {
         background: rgba(255, 255, 255, 0.95);
         padding: 2.5rem;
@@ -48,11 +53,12 @@ st.markdown(
         animation: cardFloat 1s ease-out forwards;
     }
 
+    /* Add delay to second description box animation */
     .description-box:nth-child(2) {
         animation-delay: 0.3s;
     }
 
-    /* Animated border effect */
+    /* Create animated border effect */
     .description-box::after {
         content: '';
         position: absolute;
@@ -69,7 +75,7 @@ st.markdown(
         background-size: 200% auto;
     }
 
-    /* Heading styles with animation */
+    /* Style headings within description boxes */
     .description-box h3 {
         font-size: 32px;
         color: #2c3e50;
@@ -78,6 +84,7 @@ st.markdown(
         display: inline-block;
     }
 
+    /* Add underline animation to headings */
     .description-box h3::after {
         content: '';
         position: absolute;
@@ -89,11 +96,12 @@ st.markdown(
         transition: width 0.6s ease;
     }
 
+    /* Animate heading underline on hover */
     .description-box:hover h3::after {
         width: 100%;
     }
 
-    /* Button styles with pulse effect */
+    /* Style buttons with gradient and pulse effect */
     .stButton button {
         background: linear-gradient(120deg, #3498db, #2ecc71);
         color: white;
@@ -108,13 +116,14 @@ st.markdown(
         animation: buttonPulse 2s infinite;
     }
 
+    /* Button hover effect */
     .stButton button:hover {
         transform: translateY(-3px);
         box-shadow: 0 10px 20px rgba(52, 152, 219, 0.3);
         animation: none;
     }
 
-    /* Animations */
+    /* Define animations */
     @keyframes gradientText {
         0% { background-position: 0% 50%; }
         100% { background-position: 200% 50%; }
@@ -142,13 +151,13 @@ st.markdown(
         100% { box-shadow: 0 0 0 0 rgba(52, 152, 219, 0); }
     }
 
-    /* Hover effects */
+    /* Add hover effect to description boxes */
     .description-box:hover {
         transform: translateY(-5px) scale(1.02);
         box-shadow: 0 20px 30px rgba(0,0,0,0.1);
     }
 
-    /* Card content animation */
+    /* Style and animate description text */
     .description-box p {
         font-family: 'Poppins', sans-serif;
         font-size: 16px;
@@ -158,12 +167,13 @@ st.markdown(
         animation: textFadeIn 0.8s ease-out 0.3s forwards;
     }
 
+    /* Text fade-in animation */
     @keyframes textFadeIn {
         from { opacity: 0; transform: translateY(10px); }
         to { opacity: 1; transform: translateY(0); }
     }
 
-    /* Responsive design */
+    /* Responsive design adjustments */
     @media (max-width: 768px) {
         .main-heading { font-size: 40px; }
         .description-box { padding: 1.5rem; }
@@ -171,41 +181,51 @@ st.markdown(
     }
     </style>
     """,
-    unsafe_allow_html=True,
+    unsafe_allow_html=True,  # Allow HTML/CSS to be rendered
 )
 
-# Main heading
+# Create main heading
 st.markdown('<div class="main-heading">PPT Generator</div>', unsafe_allow_html=True)
 
-# Top-left section for Research Paper PPT
+# Create two-column layout
 col1, col2 = st.columns([1, 1])
 
+# Left column: Research Paper PPT section
 with col1:
+    # Create description box for research paper option
     st.markdown(
         '<div class="description-box">'
         '<h3>PPT from Research Paper</h3>'
-        '<p>Upload a research paper and generate a professional PowerPoint presentation. Customize the content, layout, and design to suit your needs.</p>'
+        '<p>Upload a research paper and generate a professional PowerPoint presentation. '
+        'Customize the content, layout, and design to suit your needs.</p>'
         '</div>',
         unsafe_allow_html=True,
     )
-    st.markdown("<br>", unsafe_allow_html=True)  # Adding space before the button
+    # Add spacing
+    st.markdown("<br>", unsafe_allow_html=True)
+    # Add button to navigate to research paper page
     if st.button("Generate PPT using Research Paper"):
-        st.switch_page("pages/researchpaper_to_ppt.py")  # Ensure correct lowercase filename
+        st.switch_page("pages/researchpaper_to_ppt.py")
 
-# Empty space to push the next section to the bottom
+# Add vertical spacing
 st.write("\n\n\n\n\n\n\n\n\n")
 
-# Bottom-right section for Voice PPT
+# Create two more columns for voice section
 col3, col4 = st.columns([1, 1])
 
+# Right column: Voice PPT section
 with col4:
+    # Create description box for voice option
     st.markdown(
         '<div class="description-box">'
         '<h3>PPT from Voice</h3>'
-        '<p>Record your voice or provide text to create a PowerPoint presentation. Our tool will transcribe and organize your content into slides.</p>'
+        '<p>Record your voice or provide text to create a PowerPoint presentation. '
+        'Our tool will transcribe and organize your content into slides.</p>'
         '</div>',
         unsafe_allow_html=True,
     )
-    st.markdown("<br>", unsafe_allow_html=True)  # Adding space before the button
+    # Add spacing
+    st.markdown("<br>", unsafe_allow_html=True)
+    # Add button to navigate to speech page
     if st.button("Generate PPT using Voice"):
         st.switch_page("pages/speech_to_ppt.py")

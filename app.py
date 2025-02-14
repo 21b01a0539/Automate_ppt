@@ -129,105 +129,111 @@ def generate_slide_content(client, text):
         return []
 
 def create_powerpoint(slide_contents):
-    """
-    Create a PowerPoint presentation with robust parsing.
-    """
+    """Create a PowerPoint presentation with the generated content."""
+    # Initialize new PowerPoint presentation
     prs = Presentation()
     
-    # Color palette
+    # Define color scheme for the presentation
     COLOR_PALETTE = {
-        'background': RGBColor(240, 248, 255),
-        'title': RGBColor(0, 51, 102),
-        'text': RGBColor(51, 51, 51),
+        'background': RGBColor(240, 248, 255),  # Light blue background
+        'title': RGBColor(0, 51, 102),         # Dark blue for titles
+        'text': RGBColor(51, 51, 51),          # Dark gray for text
     }
 
-    # Slide layouts
-    title_slide_layout = prs.slide_layouts[0]
-    content_slide_layout = prs.slide_layouts[1]
+    # Get slide layout templates
+    title_slide_layout = prs.slide_layouts[0]  # Layout for title slide
+    content_slide_layout = prs.slide_layouts[1] # Layout for content slides
     
-    # Title Slide
+    # Create title slide
     slide = prs.slides.add_slide(title_slide_layout)
     title = slide.shapes.title
     subtitle = slide.placeholders[1]
     
+    # Set title slide content
     title.text = "Research Insights"
     subtitle.text = "Comprehensive Summary"
     
-    # Content slides
+    # Create content slides
     for content in slide_contents:
-        # Robust parsing of slide content
+        # Split content into lines for processing
         lines = content.split('\n')
         
-        # First line is the title, rest are bullets
+        # Extract title and bullet points
         slide_title = lines[0].strip()
         slide_bullets = [line.strip().lstrip('•').strip() for line in lines[1:] if line.strip()]
         
-        # Add slide
+        # Create new slide
         slide = prs.slides.add_slide(content_slide_layout)
         
-        # Customize slide title
+        # Add and format title
         title = slide.shapes.title
         title.text = slide_title
         
-        # Add bullet points
+        # Add bullet points to slide
         body = slide.shapes.placeholders[1]
         tf = body.text_frame
-        tf.clear()
+        tf.clear()  # Clear default text
         
+        # Add each bullet point with formatting
         for bullet in slide_bullets:
             p = tf.add_paragraph()
             p.text = bullet
-            p.level = 0
-            p.font.size = Pt(18)
+            p.level = 0  # Top level bullet point
+            p.font.size = Pt(18)  # Set font size
     
-    # Save to in-memory file
+    # Save presentation to memory buffer
     pptx_buffer = io.BytesIO()
     prs.save(pptx_buffer)
-    pptx_buffer.seek(0)
+    pptx_buffer.seek(0)  # Reset buffer pointer
     
     return pptx_buffer
 
-# Rest of the previous script remains the same
 def main():
+    """Main application function."""
+    # Set application title
     st.title("Research Paper to PowerPoint Converter")
     
-    # Color scheme selection
+    # Create sidebar for customization options
     st.sidebar.header("Presentation Customization")
     color_scheme = st.sidebar.selectbox(
         "Choose Color Scheme", 
         ["Professional Blue", "Corporate Gray", "Modern Minimal"]
     )
     
-    # Get OpenAI Client
+    # Initialize OpenAI client
     client = get_openai_client()
     
+    # Exit if no valid API key
     if not client:
         return
     
-    # File uploader
+    # Create file upload widget
     uploaded_file = st.file_uploader("Upload a Research Paper (PDF)", type=['pdf'])
     
+    # Process uploaded file
     if uploaded_file is not None:
-        # Extract text
+        # Extract text from PDF
         with st.spinner('Extracting text from PDF...'):
             extracted_text = extract_pdf_text(uploaded_file)
         
+        # If text extraction successful
         if extracted_text:
-            # Generate slide content
+            # Generate slide content using AI
             with st.spinner('Generating slide content with AI...'):
                 slide_contents = generate_slide_content(client, extracted_text)
             
+            # If content generation successful
             if slide_contents:
-                # Preview slide contents
+                # Show preview of generated content
                 st.subheader("Generated Slide Contents")
                 for i, slide in enumerate(slide_contents, 1):
                     st.text(f"Slide {i}: {slide}")
                 
-                # Create PowerPoint
+                # Create PowerPoint presentation
                 with st.spinner('Creating PowerPoint presentation...'):
                     pptx_file = create_powerpoint(slide_contents)
                 
-                # Download button
+                # Add download button for the presentation
                 st.download_button(
                     label="Download PowerPoint Presentation",
                     data=pptx_file,
@@ -238,5 +244,7 @@ def main():
                 st.warning("Could not generate slide content.")
         else:
             st.warning("Could not extract text from the PDF.")
+
+# Entry point of the application
 if __name__ == "__main__":
     main()

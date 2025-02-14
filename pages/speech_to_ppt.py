@@ -1,8 +1,37 @@
 import streamlit as st
-from components import get_openai_client, parse_slides
+from components import get_openai_client, parse_slides, get_relevant_image
 from ppt import create_ppt
 import speech_recognition as sr
 from components import generate_slide_content_general
+from openai import OpenAI
+
+def get_openai_client():
+    """
+    Initialize OpenAI client with API key from multiple sources:
+    1. Streamlit secrets
+    2. Environment variables (.env)
+    3. User input
+    
+    Returns:
+        OpenAI: Configured OpenAI client
+    """
+    # 2. Check environment variables
+    openai_api_key = "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"
+    
+    # 3. Prompt user input if no API key found
+    if not openai_api_key:
+        openai_api_key = st.text_input(
+            "Enter your OpenAI API Key", 
+            type="password", 
+            help="You can find your API key at https://platform.openai.com/account/api-keys"
+        )
+    
+    # Validate API key
+    if not openai_api_key:
+        st.warning("Please enter a valid OpenAI API Key")
+        return None
+    
+    return OpenAI(api_key=openai_api_key)
 
 # Custom CSS for better styling and animations
 st.markdown("""
@@ -219,13 +248,97 @@ st.markdown("""
 
 # Sidebar with instructions
 with st.sidebar:
-    st.header("How to Use")
+    st.header("📋 How to Use")
     st.markdown("""
-    1. *Record Live Speech* - Click the "Start Recording" button and speak into your microphone.
-    2. *Select Slide Sections* - Choose which sections to include in your presentation.
-    3. *Customize Design* - Pick colors and fonts for your slides.
-    4. *Generate* - Click submit to create your presentation.
+    ### Step-by-Step Guide
+    
+    1. *Record Speech* 🎤
+       - Click "Start Recording"
+       - Speak clearly into your microphone
+       - Click "Stop" when finished
+    
+    2. *Review Content* 📝
+       - Check the transcribed text
+       - Make any necessary edits
+       - Add slide titles if needed
+    
+    3. *Customize Design* 🎨
+       - Choose color scheme
+       - Select fonts
+       - Adjust sizes
+    
+    4. *Generate* ✨
+       - Click "Generate Presentation"
+       - Review slide contents
+       - Download your PPT
+    
+    ### Tips for Best Results
+    - Use a good microphone
+    - Speak at a normal pace
+    - Structure your speech clearly
+    - Review before finalizing
+    
+    ### Need Help? 💡
+    Contact support at:
+    support@example.com
     """)
+
+# Add custom CSS for sidebar styling
+st.markdown("""
+    <style>
+    /* Sidebar styling */
+    .css-1d391kg {
+        background: linear-gradient(180deg, #f5f7ff 0%, #e8ecfd 100%);
+        padding: 1.5rem;
+    }
+    
+    /* Sidebar header */
+    .css-1d391kg h1 {
+        color: #2B3A67;
+        font-size: 1.8rem;
+        margin-bottom: 1.5rem;
+    }
+    
+    /* Sidebar sections */
+    .css-1d391kg h3 {
+        color: #4E6E81;
+        font-size: 1.2rem;
+        margin-top: 1.5rem;
+        border-bottom: 2px solid #4E6E81;
+        padding-bottom: 0.5rem;
+    }
+    
+    /* List items */
+    .css-1d391kg li {
+        margin: 0.8rem 0;
+        color: #333;
+    }
+    
+    /* Emphasis */
+    .css-1d391kg em {
+        font-style: normal;
+        font-weight: 600;
+        color: #2B3A67;
+    }
+    
+    /* Tips section */
+    .css-1d391kg blockquote {
+        border-left: 3px solid #4E6E81;
+        padding-left: 1rem;
+        margin: 1rem 0;
+        color: #666;
+    }
+    
+    /* Contact section */
+    .css-1d391kg p:last-child {
+        background: #fff;
+        padding: 1rem;
+        border-radius: 8px;
+        margin-top: 1.5rem;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+    </style>
+""", unsafe_allow_html=True)
 
 # UI for Voice Input
 st.header("Enter Presentation Topic")
@@ -313,14 +426,52 @@ st.code(preview)
 # Generate button
 if st.button("Generate Presentation", key="generate_btn"):
     client = get_openai_client()
+    
     if not client:
         st.warning("Please enter a valid OpenAI API Key")
     else:
         with st.spinner('Processing your presentation...'):
             slide_contents = generate_slide_content_general(client, topic, "3", slide_titles)
             text = parse_slides(slide_contents)
-            st.text_area("Slide Contents:", slide_contents, height=200, key="slide_contents")
-            pptx_file = create_ppt(text, heading_rgb, heading_size, bg_rgb, content_rgb, content_size, heading_font, content_font)
+            
+            # Show slide contents with image previews
+            st.subheader("Slide Contents and Images:")
+
+            # Remove columns and display expanders vertically
+            for title, content_list in text.items():
+                with st.expander(f"📑 {title}"):
+                    # Show content
+                    st.markdown("**Content:**")
+                    for point in content_list:
+                        st.write(f"• {point}")
+                    
+                    # Show image preview
+                    st.markdown("**Image:**")
+                    with st.spinner('Loading...'):
+                        image_data = get_relevant_image(title)
+                        if image_data:
+                            # Use a smaller width for the preview
+                            st.image(
+                                image_data, 
+                                caption=f"Image for: {title}", 
+                                width=300  # Slightly wider since we have more space
+                            )
+                        else:
+                            st.info("No image found")
+            
+            # Generate PPT
+            pptx_file = create_ppt(
+                text, 
+                heading_rgb, 
+                heading_size, 
+                bg_rgb, 
+                content_rgb, 
+                content_size, 
+                heading_font, 
+                content_font,
+                None
+            )
+            
             st.download_button(
                 label="Download Presentation",
                 data=pptx_file,
