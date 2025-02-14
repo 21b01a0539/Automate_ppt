@@ -1,112 +1,388 @@
-# ============= Import Section =============
-# Import Streamlit for creating the web application interface
-import streamlit as st
-
-# Import custom functions from our components module
-from components import (
-    extract_pdf_text,      # Function to extract text from PDFs
-    get_openai_client,     # Function to initialize OpenAI API
-    generate_slide_content,# Function to generate slide content using AI
-    parse_slides          # Function to parse generated content into slides
-)
-
-# Import PowerPoint creation functions from our ppt module
-from ppt import (
-    create_ppt,              # Function for creating basic PPT
-    create_ppt_with_pdf_images # Function for creating PPT with PDF images
-)
-
-# Import PDF processing library
-import fitz  # PyMuPDF library for handling PDF files
-
-# Import image processing library
-from PIL import Image  # Python Imaging Library for image manipulation
-
-# Import utilities
-import io  # For handling input/output operations
-import hashlib  # For generating unique identifiers
+# Import required libraries
+import streamlit as st  # For creating web interface
+from components import extract_pdf_text, get_openai_client, generate_slide_content, parse_slides  # Import custom functions
+from ppt import create_ppt, create_ppt_with_pdf_images  # Import PPT creation functions
+import fitz  # PyMuPDF library for PDF processing
+from PIL import Image  # For image processing
+import io  # For handling byte streams
+import hashlib  # For generating unique hashes
 from openai import OpenAI  # OpenAI API client
 from io import BytesIO  # For handling binary data in memory
 
-# ============= OpenAI Client Setup =============
+
 def get_openai_client():
     """
-    Initialize and configure OpenAI API client
-    Returns: Configured OpenAI client or None if no valid API key
-    """
-    # Set default API key (replace with your actual key)
-    openai_api_key = "your-api-key-here"
+    Initialize OpenAI client with API key from multiple sources:
+    1. Streamlit secrets
+    2. Environment variables (.env)
+    3. User input
     
-    # If no API key is set, prompt user to input one
+    Returns:
+        OpenAI: Configured OpenAI client
+    """
+    # 2. Check environment variables
+    openai_api_key = "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"
+    
+    # 3. Prompt user input if no API key found
     if not openai_api_key:
         openai_api_key = st.text_input(
-            "Enter your OpenAI API Key",  # Input label
-            type="password",              # Hide the API key
-            help="Get your API key from OpenAI dashboard"  # Help text
+            "Enter your OpenAI API Key", 
+            type="password", 
+            help="You can find your API key at https://platform.openai.com/account/api-keys"
         )
     
-    # Validate the API key
+    # Validate API key
     if not openai_api_key:
         st.warning("Please enter a valid OpenAI API Key")
         return None
     
-    # Return configured OpenAI client
     return OpenAI(api_key=openai_api_key)
 
-# ============= Main Application UI =============
-# Set the application title
-st.title("Research Paper to Presentation Converter")
 
-# Add description text
+def extract_and_display_images(uploaded_file, max_width=400):
+    uploaded_file.seek(0)  # Reset file pointer
+    pdf_document = fitz.open(stream=uploaded_file.read(), filetype="pdf")
+    image_hashes = set()
+    columns = st.columns(4)  # 3 images per row
+    column_idx = 0
+
+    for page_num in range(len(pdf_document)):
+        page = pdf_document[page_num]
+        images = page.get_images(full=True)
+
+        # st.write(f"Number of images on page {page_num + 1}: {len(images)}")  # Debug info
+
+        for img in images:
+            try:
+                xref = img[0]
+                base_image = pdf_document.extract_image(xref)
+                image_bytes = base_image["image"]
+                img_hash = hashlib.md5(image_bytes).hexdigest()
+
+                if img_hash in image_hashes:
+                    continue  # Skip duplicates
+                image_hashes.add(img_hash)
+
+                # Resize image
+                image = Image.open(io.BytesIO(image_bytes))
+                width, height = image.size
+                if width > max_width:
+                    aspect_ratio = height / width
+                    image = image.resize((max_width, int(max_width * aspect_ratio)))
+
+                # Display image in columns
+                with columns[column_idx % len(columns)]:
+                    st.image(image, use_column_width=True)
+                column_idx += 1
+
+            except Exception as e:
+                st.error(f"Failed to process image on page {page_num + 1}: {e}")
+                continue
+
+    pdf_document.close()
+
+
+# Custom CSS matching speech_to_ppt.py
 st.markdown("""
-    Transform your research papers into professional presentations automatically!
-    Upload your PDF and customize the output.
+    <style>
+    /* Modern clean styling */
+    .stApp {
+        background: linear-gradient(135deg, #EEF2FF 0%, #E6E9F5 100%);
+    }
+
+    /* Title styling */
+    h1 {
+        font-family: 'Playfair Display', serif;
+        font-size: 3.2rem;
+        background: linear-gradient(120deg, #2B3A67, #4E6E81);
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+        text-align: center;
+        margin: 2rem 0;
+        animation: fadeIn 1s ease-out;
+    }
+
+    /* Subheader styling */
+    h2, h3, .subheader {
+        font-family: 'Montserrat', sans-serif;
+        color: #2B3A67;
+        margin: 1rem 0;
+        font-weight: 600;
+        animation: slideIn 0.5s ease-out;
+    }
+
+    /* File uploader styling */
+    .stFileUploader > div {
+        background: white !important;
+        border-radius: 12px !important;
+        padding: 1rem !important;
+        border: 2px dashed #4E6E81 !important;
+        transition: all 0.3s ease;
+        animation: fadeIn 0.5s ease-out;
+    }
+
+    .stFileUploader > div:hover {
+        border-color: #2B3A67 !important;
+        background: rgba(255, 255, 255, 0.9) !important;
+    }
+
+    /* Input container styling */
+    .stTextInput > div, .stTextArea > div {
+        background: white;
+        border-radius: 12px;
+        padding: 0.5rem;
+        border: 2px solid #E6E9F5;
+        box-shadow: 0 4px 6px rgba(43, 58, 103, 0.1);
+        transition: all 0.3s ease;
+        animation: fadeIn 0.5s ease-out;
+    }
+
+    .stTextInput > div:focus-within, .stTextArea > div:focus-within {
+        border-color: #2B3A67;
+        box-shadow: 0 8px 12px rgba(43, 58, 103, 0.15);
+        transform: translateY(-2px);
+    }
+
+    /* Button styling */
+    .stButton > button {
+        background: linear-gradient(135deg, #2B3A67 0%, #4E6E81 100%);
+        color: white;
+        padding: 0.6rem 1.5rem;
+        border-radius: 10px;
+        border: none;
+        font-family: 'Montserrat', sans-serif;
+        font-weight: 500;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 6px rgba(43, 58, 103, 0.2);
+        animation: fadeIn 0.5s ease-out;
+    }
+
+    .stButton > button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 8px rgba(43, 58, 103, 0.25);
+        background: linear-gradient(135deg, #4E6E81 0%, #2B3A67 100%);
+    }
+
+    /* Select box and other input styling */
+    .stSelectbox > div > div,
+    .stColorPicker > div > div {
+        background: white;
+        border-radius: 10px;
+        border: 2px solid #E6E9F5;
+        transition: all 0.3s ease;
+    }
+
+    .stSelectbox > div > div:hover {
+        border-color: #2B3A67;
+    }
+
+    /* Remove empty spaces */
+    .block-container {
+        padding-top: 1rem !important;
+        padding-bottom: 1rem !important;
+        max-width: 1000px !important;
+        margin: 0 auto !important;
+    }
+
+    .element-container {
+        margin: 0 !important;
+        padding: 1rem 0 !important;
+        border-bottom: 1px solid rgba(43, 58, 103, 0.1);
+    }
+
+    .element-container:last-child {
+        border-bottom: none;
+    }
+
+    /* Animations */
+    @keyframes fadeIn {
+        from {
+            opacity: 0;
+            transform: translateY(10px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    @keyframes slideIn {
+        from {
+            opacity: 0;
+            transform: translateX(-20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateX(0);
+        }
+    }
+
+    /* Responsive adjustments */
+    @media (max-width: 768px) {
+        h1 {
+            font-size: 2.5rem;
+        }
+        .stButton > button {
+            width: 100%;
+            padding: 0.8rem;
+        }
+    }
+
+    /* Expander styling */
+    .streamlit-expanderHeader {
+        background: white;
+        border-radius: 10px;
+        border: 2px solid #E6E9F5;
+        transition: all 0.3s ease;
+    }
+
+    /* Remove default streamlit margins */
+    .css-1544g2n {
+        padding: 0 !important;
+    }
+
+    .css-1y4p8pa {
+        padding: 0 !important;
+    }
+
+    /* Sidebar styling */
+    .css-1d391kg {  /* Sidebar background */
+        background: linear-gradient(180deg, #f5f7ff 0%, #e8ecfd 100%);
+        border-right: 1px solid #e0e5f5;
+    }
+
+    /* Sidebar header */
+    .css-1d391kg h1, .css-1d391kg h2 {
+        color: #2B3A67;
+        font-size: 1.5rem;
+        padding: 1rem 0;
+        border-bottom: 2px solid #4E6E81;
+        margin-bottom: 1.5rem;
+    }
+
+    /* Sidebar content */
+    .css-1d391kg .stMarkdown {
+        background: white;
+        padding: 1rem;
+        border-radius: 10px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        margin-bottom: 1rem;
+    }
+
+    /* Sidebar list items */
+    .css-1d391kg ul {
+        list-style-type: none;
+        padding-left: 0;
+    }
+
+    .css-1d391kg li {
+        margin: 0.8rem 0;
+        padding-left: 1.5rem;
+        position: relative;
+    }
+
+    .css-1d391kg li:before {
+        content: '→';
+        position: absolute;
+        left: 0;
+        color: #4E6E81;
+    }
+
+    /* Sidebar emphasis */
+    .css-1d391kg em {
+        color: #2B3A67;
+        font-style: normal;
+        font-weight: 600;
+        background: linear-gradient(120deg, #4E6E81 0%, #4E6E81 100%);
+        background-clip: text;
+        -webkit-background-clip: text;
+        color: transparent;
+    }
+    </style>
+""", unsafe_allow_html=True)
+
+
+# Main title
+st.title("Research Paper to Presentation")
+st.markdown("""
+    Transform your research paper into professional presentation slides easily!
+    Follow the steps below to generate your customized presentation.
 """)
 
-# Create file uploader widget that accepts PDF files
-uploaded_file = st.file_uploader("Upload your research paper (PDF)", type="pdf")
+# Sidebar with instructions
+with st.sidebar:
+    st.header("📚 How to Use")
+    st.markdown("""
+    ### Step-by-Step Guide
+    
+    1. *Upload your PDF* 📄
+       - Supported format: PDF
+       - Max size: 200MB
+       - Clear text required
+    
+    2. *Select Slide Sections* 📑
+       - Choose key sections
+       - Arrange in order
+       - Add custom sections
+    
+    3. *Customize Design* 🎨
+       - Pick color scheme
+       - Choose fonts
+       - Set sizes
+    
+    4. *Generate* ✨
+       - Review content
+       - Download PPTX
+    
+    ### Tips
+    - Use clear, legible PDFs
+    - Structure content logically
+    - Preview before finalizing
+    
+    ### Need Help?
+    Contact support at:
+    support@example.com
+    """)
 
-# ============= PDF Processing Section =============
-# Process the uploaded file if one exists
+# File upload section
+st.header("Upload Research Paper")
+uploaded_file = st.file_uploader("Upload a PDF file", type=["pdf"])
+
 if uploaded_file is not None:
     try:
         # Step 1: Extract text content from the PDF
         text = extract_pdf_text(uploaded_file)
         
-        # Reset file pointer to beginning for image extraction
+        # Step 2: Reset file pointer to start of file for image extraction
         uploaded_file.seek(0)
         
-        # Initialize PDF document for image extraction
+        # Step 3: Initialize PDF document for image extraction
         pdf_document = fitz.open(stream=uploaded_file.read(), filetype="pdf")
         extracted_images = []  # List to store extracted images
-
-        # Loop through each page in the PDF
+        
+        # Step 4: Extract images from each page of the PDF
         for page_num in range(len(pdf_document)):
-            # Get current page
             page = pdf_document[page_num]
-            # Get list of images on the page
             images = page.get_images(full=True)
             
-            # Process each image found on the page
+            # Process each image found in the page
             for img in images:
                 try:
-                    # Get image reference number
-                    xref = img[0]
-                    # Extract raw image data
-                    base_image = pdf_document.extract_image(xref)
-                    # Get binary image data
-                    image_bytes = base_image["image"]
+                    # Extract image data
+                    xref = img[0]  # Get image reference
+                    base_image = pdf_document.extract_image(xref)  # Extract raw image data
+                    image_bytes = base_image["image"]  # Get binary image data
                     
-                    # Create PIL Image object to validate image
+                    # Step 5: Validate and convert image
+                    # Create PIL Image object to verify image is valid and get format
                     image = Image.open(BytesIO(image_bytes))
                     
-                    # Create new BytesIO buffer for the image
+                    # Step 6: Save image to BytesIO buffer
                     image_data = BytesIO()
-                    # Save image with original format or PNG as fallback
+                    # Save with original format or fallback to PNG
                     image.save(image_data, format=image.format if image.format else 'PNG')
-                    # Reset buffer pointer to start
-                    image_data.seek(0)
-                    # Add processed image to list
+                    image_data.seek(0)  # Reset buffer pointer
                     extracted_images.append(image_data)
                     
                     # Log successful extraction
