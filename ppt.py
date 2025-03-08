@@ -10,57 +10,67 @@ def create_ppt(slides_content, heading_rgb, heading_size, bg_rgb, content_rgb, c
     """Create PowerPoint presentation with slides and optional images"""
     prs = Presentation()
     
+    first_slide = True
     for title, content_list in slides_content.items():
         try:
             print(f"\nProcessing slide: {title}")  # Debug print
             
-            # Create slide
-            slide_layout = prs.slide_layouts[1]
-            slide = prs.slides.add_slide(slide_layout)
+            if first_slide:
+                # First slide with layout 0 (Title Slide)
+                
+                slide_layout = prs.slide_layouts[0]  # Title Slide Layout
+                slide = prs.slides.add_slide(slide_layout)
+
+                title_shape = slide.shapes.title
+                subtitle = slide.placeholders[1]
+
+                # Assign title
+                title_shape.text = content_list[0]  # First line as title
+    
+                # Assign subtitle (Joining remaining lines)
+                subtitle.text = "\n".join(content_list[1])  # Joining rest of the content
+                
+                first_slide = False  # Mark first slide as processed
+            else:
+                # Other slides with layout 1 (Title & Content)
+                slide_layout = prs.slide_layouts[1]
+                slide = prs.slides.add_slide(slide_layout)
+                
+                # Set title and content
+                title_shape = slide.shapes.title
+                title_shape.text = title
+                content = slide.placeholders[1]
+                content.text = "\n".join([f"• {point}" for point in content_list])
+                
+                # Try to add a relevant image
+                try:
+                    print(f"Attempting to fetch image for: {title}")
+                    image_data = get_relevant_image(title)
+                    if image_data:
+                        print("Successfully got image data")
+                        # Add image to right side of slide
+                        left = prs.slide_width - 4000000  # Adjust position
+                        top = (prs.slide_height - 3000000) // 2  # Center vertically
+                        width = 3500000  # Adjust size
+                        height = 2500000  # Adjust size
+                        slide.shapes.add_picture(image_data, left, top, width=width, height=height)
+                        print(f"Image added to slide: {title}")
+                    else:
+                        print(f"No image data received for: {title}")
+                except Exception as img_error:
+                    print(f"Error adding image to slide: {str(img_error)}")
+                
+                # Apply styling for content slides
+                for p in content.text_frame.paragraphs:
+                    p.font.size = Pt(content_size)
+                    p.font.color.rgb = RGBColor(*content_rgb)
+                    p.font.name = content_font
             
-            # Set title
-            title_shape = slide.shapes.title
-            title_shape.text = title
-            
-            # Add content
-            content = slide.placeholders[1]
-            content.text = "\n".join([f"• {point}" for point in content_list])
-            
-            # Try to add a relevant image
-            try:
-                print(f"Attempting to fetch image for: {title}")
-                image_data = get_relevant_image(title)
-                if image_data:
-                    print("Successfully got image data")
-                    # Add image to right side of slide
-                    left = prs.slide_width - 4000000  # Adjust position
-                    top = (prs.slide_height - 3000000) // 2  # Center vertically
-                    width = 3500000  # Adjust size
-                    height = 2500000  # Adjust size
-                    
-                    slide.shapes.add_picture(
-                        image_data,
-                        left,
-                        top,
-                        width=width,
-                        height=height
-                    )
-                    print(f"Image added to slide: {title}")
-                else:
-                    print(f"No image data received for: {title}")
-            except Exception as img_error:
-                print(f"Error adding image to slide: {str(img_error)}")
-            
-            # Apply styling
+            # Apply styling for all slides
             title_shape.text_frame.paragraphs[0].font.size = Pt(heading_size)
             title_shape.text_frame.paragraphs[0].font.color.rgb = RGBColor(*heading_rgb)
             title_shape.text_frame.paragraphs[0].font.name = heading_font
-
-            for p in content.text_frame.paragraphs:
-                p.font.size = Pt(content_size)
-                p.font.color.rgb = RGBColor(*content_rgb)
-                p.font.name = content_font
-
+            
             # Set background color
             background = slide.background
             fill = background.fill
