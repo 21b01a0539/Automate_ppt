@@ -1,14 +1,13 @@
-# Import required libraries
-import streamlit as st  # For creating web interface
+import streamlit as st 
 from components import extract_pdf_text, get_openai_client, generate_slide_content, parse_slides  # Import custom functions
-from ppt import create_ppt, create_ppt_with_pdf_images  # Import PPT creation functions
+from ppt import create_ppt, create_ppt  # Import PPT creation functions
 import fitz  # PyMuPDF library for PDF processing
 from PIL import Image  # For image processing
 import io  # For handling byte streams
+import os
 import hashlib  # For generating unique hashes
 from openai import OpenAI  # OpenAI API client
 from io import BytesIO  # For handling binary data in memory
-
 
 def get_openai_client():
     """
@@ -21,7 +20,7 @@ def get_openai_client():
         OpenAI: Configured OpenAI client
     """
     # 2. Check environment variables
-    openai_api_key = "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"
+    openai_api_key = os.getenv('OPENAI_API_KEY')
     
     # 3. Prompt user input if no API key found
     if not openai_api_key:
@@ -515,7 +514,7 @@ if st.button("Generate Presentation", key="generate_btn"):
                         st.info("No images found in the PDF")
             
             # Generate PPT with PDF images
-            pptx_file = create_ppt_with_pdf_images(
+            pptx_file = create_ppt(
                 parsed_slides, 
                 heading_rgb, 
                 heading_size, 

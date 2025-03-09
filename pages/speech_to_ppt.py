@@ -4,6 +4,7 @@ from ppt import create_ppt
 import speech_recognition as sr
 from components import generate_slide_content_general
 from openai import OpenAI
+import os
 
 def get_openai_client():
     """
@@ -16,7 +17,7 @@ def get_openai_client():
         OpenAI: Configured OpenAI client
     """
     # 2. Check environment variables
-    openai_api_key = "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"
+    openai_api_key = os.getenv('OPENAI_API_KEY')
     
     # 3. Prompt user input if no API key found
     if not openai_api_key:
