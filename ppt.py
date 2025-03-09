@@ -28,7 +28,7 @@ def create_ppt(slides_content, heading_rgb, heading_size, bg_rgb, content_rgb, c
                 title_shape.text = content_list[0]  # First line as title
     
                 # Assign subtitle (Joining remaining lines)
-                subtitle.text = "\n".join(content_list[1])  # Joining rest of the content
+                subtitle.text = "\n".join(content_list[1:])  # Joining rest of the content
                 
                 first_slide = False  # Mark first slide as processed
             else:
