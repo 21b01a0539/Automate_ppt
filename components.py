@@ -107,6 +107,41 @@ Content to be converted into slides:
     except Exception as e:
         st.error(f"Error generating slide content: {e}")
         return ""
+
+def get_relevant_image_topics(client, slide_content):
+    """
+    Extract relevant image topics based on slide content.
+    Uses OpenAI GPT-4 to generate appropriate image keywords for each slide.
+    """
+    try:
+        response = client.chat.completions.create(
+            model="gpt-4",
+            messages=[
+                {"role": "system", "content": "You are an expert in selecting relevant image topics for presentation slides."},
+                {"role": "user", "content": f"""Extract relevant image topics for each slide title and its content.
+                
+                - For each slide, suggest 1-2 keywords or phrases that best describe the visual representation needed.
+                - Keywords should be concise and useful for image searches.
+                - The image topics should be broad enough to find suitable images online but specific to the slide content.
+
+                Slide Content:
+                {slide_content}
+
+                Format output as:
+                [Slide Title] - Image Topics: keyword1, keyword2
+                """}
+            ],
+            temperature=0.3,
+            max_tokens=500
+        )
+        
+        # Extracting generated content
+        image_topics = response.choices[0].message.content
+        return image_topics
+
+    except Exception as e:
+        print(f"Error generating image topics: {e}")
+        return ""
 def parse_slides(text):
     content = {}
 
