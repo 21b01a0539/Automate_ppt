@@ -1,11 +1,12 @@
-import streamlit as st
-from components import get_openai_client, parse_slides
-from ppt import create_ppt
-import speech_recognition as sr
-from components import generate_slide_content_general
+# Import required libraries
+import streamlit as st  # For creating web interface
+from components import get_openai_client, parse_slides  # Custom helper functions
+from ppt import create_ppt  # PowerPoint generation function
+import speech_recognition as sr  # For speech recognition
+from components import generate_slide_content_general  # Slide content generation
 import requests  # For making API requests
 
-# Custom CSS for better styling and animations
+# Custom CSS styling for better UI/UX
 st.markdown("""
     <style>
     /* General Styling */
@@ -15,6 +16,7 @@ st.markdown("""
         animation: fadeIn 1s;
     }
     
+    /* Title styling */
     .stTitle {
         color: #2E4057;
         text-align: center;
@@ -24,6 +26,7 @@ st.markdown("""
         animation: slideDown 1s;
     }
     
+    /* Section header styling */
     .section-header {
         background-color: #f0f2f6;
         padding: 1rem;
@@ -32,6 +35,7 @@ st.markdown("""
         animation: fadeIn 1s ease-in-out;
     }
     
+    /* Button styling */
     .stButton > button {
         background-color: #4CAF50;
         color: white;
@@ -45,11 +49,12 @@ st.markdown("""
         transform: scale(1.05);
     }
 
+    /* Color picker label styling */
     .stColorPicker > label {
         font-weight: bold;
     }
 
-    /* Animations */
+    /* Animation keyframes */
     @keyframes fadeIn {
         from { opacity: 0; }
         to { opacity: 1; }
@@ -63,7 +68,7 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# Initialize session state for storing data between reruns
+# Initialize session state variables for data persistence
 if 'combined_text' not in st.session_state:
     st.session_state['combined_text'] = ""
 if 'transcribed_text' not in st.session_state:
@@ -75,9 +80,17 @@ if 'is_recording' not in st.session_state:
 if 'audio_recorder' not in st.session_state:
     st.session_state['audio_recorder'] = sr.Recognizer()
 
-# Function to fetch images from Unsplash
+# Function to fetch images from Unsplash API
 def fetch_unsplash_images(query, api_key, per_page=5):
-    """Fetch images from Unsplash based on a query."""
+    """
+    Fetch images from Unsplash based on a query.
+    Args:
+        query (str): Search term for images
+        api_key (str): Unsplash API key
+        per_page (int): Number of images to fetch
+    Returns:
+        list: List of image results or empty list if failed
+    """
     url = f"https://api.unsplash.com/search/photos"
     headers = {
         "Authorization": f"Client-ID {api_key}"
@@ -93,8 +106,12 @@ def fetch_unsplash_images(query, api_key, per_page=5):
         st.error(f"Failed to fetch images: {response.status_code}")
         return []
 
+# Function to handle speech recognition
 def start_listening():
-    """Listen continuously until user stops speaking"""
+    """
+    Listen continuously until user stops speaking.
+    Handles speech recognition and error cases.
+    """
     st.session_state['is_recording'] = True
     st.session_state['transcribed_text'] = ""
 
@@ -103,6 +120,7 @@ def start_listening():
         st.info("🎙 Listening... Speak now.")
 
         try:
+            # Record and transcribe audio
             audio = st.session_state['audio_recorder'].listen(source, timeout=10, phrase_time_limit=15)
             recognized_text = st.session_state['audio_recorder'].recognize_google(audio)
             st.session_state['transcribed_text'] = recognized_text
@@ -116,14 +134,14 @@ def start_listening():
         finally:
             st.session_state['is_recording'] = False
 
-# Main title with description
+# Main application title and description
 st.title("Live Speech to Presentation Generator")
 st.markdown("""
     Transform your live speech into professional presentation slides easily!
     Follow the steps below to generate your customized presentation.
 """)
 
-# Sidebar with instructions
+# Sidebar instructions
 with st.sidebar:
     st.header("How to Use")
     st.markdown("""
@@ -133,10 +151,11 @@ with st.sidebar:
     4. *Generate* - Click submit to create your presentation.
     """)
 
-# UI for Voice Input
+# Voice input section
 st.header("Enter Presentation Topic")
 col1, col2 = st.columns([5, 1])
 
+# Topic input field
 with col1:
     topic = st.text_input(
         "Enter the topic of your presentation:",
@@ -144,6 +163,7 @@ with col1:
         key="topic_input"
     )
 
+# Recording controls
 with col2:
     if st.session_state.get('is_recording', False):
         if st.button("🔴 Stop Recording", key="stop_mic"):
@@ -152,13 +172,14 @@ with col2:
         if st.button("🎤 Start Voice Input", key="start_mic", on_click=start_listening):
             pass
 
+# Display transcribed text if available
 if st.session_state.get('transcribed_text', ""):
     st.markdown(f"*Recognized Text:* {st.session_state['transcribed_text']}")
 
-# Fetch and display related images
+# Image fetching and display section
 if topic:
     st.header("Related Images")
-    unsplash_api_key = "your_unsplash_api_key"  # Replace with your Unsplash API key
+    unsplash_api_key = "your_unsplash_api_key"  # Replace with actual API key
     images = fetch_unsplash_images(topic, unsplash_api_key, per_page=5)
     
     if images:
@@ -168,7 +189,7 @@ if topic:
     else:
         st.warning("No images found for the given topic.")
 
-# Slide structure selection with unique key
+# Slide structure input section
 st.header("Enter Slide Titles")
 st.write("You can specify the slides you need for your presentation by listing their titles below.")
 
@@ -178,6 +199,7 @@ slide_titles_input = st.text_area(
     key="slide_titles"
 )
 
+# Display entered slide titles
 if slide_titles_input.strip():
     slide_titles = [title.strip() for title in slide_titles_input.split("\n") if title.strip()]
     st.write("### Selected Slide Titles:")
@@ -186,16 +208,18 @@ if slide_titles_input.strip():
 else:
     st.write("No slide titles entered yet.")
 
-# Design customization with unique keys
+# Design customization section
 st.header("Customize Design")
 col3, col4, col5 = st.columns(3)
 
+# Color scheme selection
 with col3:
     st.subheader("Color Scheme")
     heading_color = st.color_picker("Heading Color", "#2E4057", key="heading_color")
     content_color = st.color_picker("Content Color", "#333333", key="content_color")
     background_color = st.color_picker("Background Color", "#FFFFFF", key="bg_color")
 
+# Heading font settings
 with col4:
     st.subheader("Heading Font")
     heading_font = st.selectbox(
@@ -205,6 +229,7 @@ with col4:
     )
     heading_size = st.slider("Heading Size (px)", 24, 48, 36, key="heading_size")
 
+# Content font settings
 with col5:
     st.subheader("Content Font")
     content_font = st.selectbox(
@@ -214,7 +239,7 @@ with col5:
     )
     content_size = st.slider("Content Size (px)", 14, 28, 18, key="content_size")
 
-# Convert colors to RGB
+# Convert hex colors to RGB
 heading_rgb = tuple(int(heading_color.lstrip('#')[i:i+2], 16) for i in (0, 2, 4))
 content_rgb = tuple(int(content_color.lstrip('#')[i:i+2], 16) for i in (0, 2, 4))
 bg_rgb = tuple(int(background_color.lstrip('#')[i:i+2], 16) for i in (0, 2, 4))
@@ -229,17 +254,20 @@ Selected Settings:
 """
 st.code(preview)
 
-# Generate button
+# Presentation generation section
 if st.button("Generate Presentation", key="generate_btn"):
     client = get_openai_client()
     if not client:
         st.warning("Please enter a valid OpenAI API Key")
     else:
         with st.spinner('Processing your presentation...'):
+            # Generate slide content and create PowerPoint
             slide_contents = generate_slide_content_general(client, topic, "3", slide_titles)
             text = parse_slides(slide_contents)
             st.text_area("Slide Contents:", slide_contents, height=200, key="slide_contents")
             pptx_file = create_ppt(text, heading_rgb, heading_size, bg_rgb, content_rgb, content_size, heading_font, content_font)
+            
+            # Download button for generated presentation
             st.download_button(
                 label="Download Presentation",
                 data=pptx_file,

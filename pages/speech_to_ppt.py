@@ -1,64 +1,207 @@
 import streamlit as st
-from components import get_openai_client, parse_slides
+from components import get_openai_client, parse_slides, get_relevant_image
 from ppt import create_ppt
 import speech_recognition as sr
 from components import generate_slide_content_general
+from openai import OpenAI
+import os
+
+def get_openai_client():
+    """
+    Initialize OpenAI client with API key from multiple sources:
+    1. Streamlit secrets
+    2. Environment variables (.env)
+    3. User input
+    
+    Returns:
+        OpenAI: Configured OpenAI client
+    """
+    # 2. Check environment variables
+    openai_api_key = os.getenv('OPENAI_API_KEY')
+    
+    # 3. Prompt user input if no API key found
+    if not openai_api_key:
+        openai_api_key = st.text_input(
+            "Enter your OpenAI API Key", 
+            type="password", 
+            help="You can find your API key at https://platform.openai.com/account/api-keys"
+        )
+    
+    # Validate API key
+    if not openai_api_key:
+        st.warning("Please enter a valid OpenAI API Key")
+        return None
+    
+    return OpenAI(api_key=openai_api_key)
 
 # Custom CSS for better styling and animations
 st.markdown("""
     <style>
-    /* General Styling */
-    .main {
-        padding: 2rem;
-        background: linear-gradient(to bottom, #f0f4fc, #ffffff);
-        animation: fadeIn 1s;
-    }
-    
-    .stTitle {
-        color: #2E4057;
-        text-align: center;
-        padding-bottom: 2rem;
-        font-size: 2.5rem;
-        font-weight: bold;
-        animation: slideDown 1s;
-    }
-    
-    .section-header {
-        background-color: #f0f2f6;
-        padding: 1rem;
-        border-radius: 5px;
-        margin: 1rem 0;
-        animation: fadeIn 1s ease-in-out;
-    }
-    
-    .stButton > button {
-        background-color: #4CAF50;
-        color: white;
-        font-size: 1rem;
-        padding: 0.5rem 1rem;
-        border-radius: 8px;
-        transition: all 0.3s ease;
-    }
-    .stButton > button:hover {
-        background-color: #45a049;
-        transform: scale(1.05);
+    /* Modern clean styling */
+    .stApp {
+        background: linear-gradient(135deg, #EEF2FF 0%, #E6E9F5 100%);
     }
 
-    .stColorPicker > label {
-        font-weight: bold;
+    /* Title styling */
+    h1 {
+        font-family: 'Playfair Display', serif;
+        font-size: 3.2rem;
+        background: linear-gradient(120deg, #2B3A67, #4E6E81);
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+        text-align: center;
+        margin: 2rem 0;
+        animation: fadeIn 1s ease-out;
+    }
+
+    /* Subheader styling */
+    h2, h3, .subheader {
+        font-family: 'Montserrat', sans-serif;
+        color: #2B3A67;
+        margin: 1rem 0;
+        font-weight: 600;
+        animation: slideIn 0.5s ease-out;
+    }
+
+    /* Input container styling */
+    .stTextInput > div, .stTextArea > div {
+        background: white;
+        border-radius: 12px;
+        padding: 0.5rem;
+        border: 2px solid #E6E9F5;
+        box-shadow: 0 4px 6px rgba(43, 58, 103, 0.1);
+        transition: all 0.3s ease;
+        animation: fadeIn 0.5s ease-out;
+    }
+
+    .stTextInput > div:focus-within, .stTextArea > div:focus-within {
+        border-color: #2B3A67;
+        box-shadow: 0 8px 12px rgba(43, 58, 103, 0.15);
+        transform: translateY(-2px);
+    }
+
+    /* Button styling */
+    .stButton > button {
+        background: linear-gradient(135deg, #2B3A67 0%, #4E6E81 100%);
+        color: white;
+        padding: 0.6rem 1.5rem;
+        border-radius: 10px;
+        border: none;
+        font-family: 'Montserrat', sans-serif;
+        font-weight: 500;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 6px rgba(43, 58, 103, 0.2);
+        animation: fadeIn 0.5s ease-out;
+    }
+
+    .stButton > button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 8px rgba(43, 58, 103, 0.25);
+        background: linear-gradient(135deg, #4E6E81 0%, #2B3A67 100%);
+    }
+
+    /* Recording button special styling */
+    button[data-testid="baseButton-secondary"] {
+        background: linear-gradient(135deg, #FF6B6B 0%, #EE5253 100%);
+        animation: pulse 2s infinite;
+    }
+
+    /* Select box styling */
+    .stSelectbox > div > div {
+        background: white;
+        border-radius: 10px;
+        border: 2px solid #E6E9F5;
+        transition: all 0.3s ease;
+    }
+
+    .stSelectbox > div > div:hover {
+        border-color: #2B3A67;
+    }
+
+    /* Slider styling */
+    .stSlider > div > div {
+        background-color: #E6E9F5;
+    }
+
+    .stSlider > div > div > div {
+        background-color: #2B3A67;
+    }
+
+    /* Color picker styling */
+    .stColorPicker > div > div {
+        border-radius: 10px;
+        overflow: hidden;
+        border: 2px solid #E6E9F5;
     }
 
     /* Animations */
     @keyframes fadeIn {
-        from { opacity: 0; }
-        to { opacity: 1; }
+        from {
+            opacity: 0;
+            transform: translateY(10px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
     }
 
-    @keyframes slideDown {
-        from { transform: translateY(-20px); opacity: 0; }
-        to { transform: translateY(0); opacity: 1; }
+    @keyframes slideIn {
+        from {
+            opacity: 0;
+            transform: translateX(-20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateX(0);
+        }
     }
 
+    @keyframes pulse {
+        0% {
+            box-shadow: 0 0 0 0 rgba(238, 82, 83, 0.4);
+        }
+        70% {
+            box-shadow: 0 0 0 10px rgba(238, 82, 83, 0);
+        }
+        100% {
+            box-shadow: 0 0 0 0 rgba(238, 82, 83, 0);
+        }
+    }
+
+    /* Responsive adjustments */
+    @media (max-width: 768px) {
+        h1 {
+            font-size: 2.5rem;
+        }
+        .stButton > button {
+            width: 100%;
+            padding: 0.8rem;
+        }
+    }
+
+    /* Remove empty spaces */
+    .block-container {
+        padding-top: 1rem;
+        padding-bottom: 1rem;
+        max-width: 1000px;
+        margin: 0 auto;
+    }
+
+    .stMarkdown {
+        margin-bottom: 0.5rem;
+    }
+
+    /* Add subtle dividers between sections */
+    .element-container {
+        border-bottom: 1px solid rgba(43, 58, 103, 0.1);
+        padding: 1rem 0;
+    }
+
+    .element-container:last-child {
+        border-bottom: none;
+    }
     </style>
 """, unsafe_allow_html=True)
 
@@ -106,13 +249,97 @@ st.markdown("""
 
 # Sidebar with instructions
 with st.sidebar:
-    st.header("How to Use")
+    st.header("📋 How to Use")
     st.markdown("""
-    1. *Record Live Speech* - Click the "Start Recording" button and speak into your microphone.
-    2. *Select Slide Sections* - Choose which sections to include in your presentation.
-    3. *Customize Design* - Pick colors and fonts for your slides.
-    4. *Generate* - Click submit to create your presentation.
+    ### Step-by-Step Guide
+    
+    1. *Record Speech* 🎤
+       - Click "Start Recording"
+       - Speak clearly into your microphone
+       - Click "Stop" when finished
+    
+    2. *Review Content* 📝
+       - Check the transcribed text
+       - Make any necessary edits
+       - Add slide titles if needed
+    
+    3. *Customize Design* 🎨
+       - Choose color scheme
+       - Select fonts
+       - Adjust sizes
+    
+    4. *Generate* ✨
+       - Click "Generate Presentation"
+       - Review slide contents
+       - Download your PPT
+    
+    ### Tips for Best Results
+    - Use a good microphone
+    - Speak at a normal pace
+    - Structure your speech clearly
+    - Review before finalizing
+    
+    ### Need Help? 💡
+    Contact support at:
+    support@example.com
     """)
+
+# Add custom CSS for sidebar styling
+st.markdown("""
+    <style>
+    /* Sidebar styling */
+    .css-1d391kg {
+        background: linear-gradient(180deg, #f5f7ff 0%, #e8ecfd 100%);
+        padding: 1.5rem;
+    }
+    
+    /* Sidebar header */
+    .css-1d391kg h1 {
+        color: #2B3A67;
+        font-size: 1.8rem;
+        margin-bottom: 1.5rem;
+    }
+    
+    /* Sidebar sections */
+    .css-1d391kg h3 {
+        color: #4E6E81;
+        font-size: 1.2rem;
+        margin-top: 1.5rem;
+        border-bottom: 2px solid #4E6E81;
+        padding-bottom: 0.5rem;
+    }
+    
+    /* List items */
+    .css-1d391kg li {
+        margin: 0.8rem 0;
+        color: #333;
+    }
+    
+    /* Emphasis */
+    .css-1d391kg em {
+        font-style: normal;
+        font-weight: 600;
+        color: #2B3A67;
+    }
+    
+    /* Tips section */
+    .css-1d391kg blockquote {
+        border-left: 3px solid #4E6E81;
+        padding-left: 1rem;
+        margin: 1rem 0;
+        color: #666;
+    }
+    
+    /* Contact section */
+    .css-1d391kg p:last-child {
+        background: #fff;
+        padding: 1rem;
+        border-radius: 8px;
+        margin-top: 1.5rem;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+    </style>
+""", unsafe_allow_html=True)
 
 # UI for Voice Input
 st.header("Enter Presentation Topic")
@@ -200,14 +427,52 @@ st.code(preview)
 # Generate button
 if st.button("Generate Presentation", key="generate_btn"):
     client = get_openai_client()
+    
     if not client:
         st.warning("Please enter a valid OpenAI API Key")
     else:
         with st.spinner('Processing your presentation...'):
             slide_contents = generate_slide_content_general(client, topic, "3", slide_titles)
             text = parse_slides(slide_contents)
-            st.text_area("Slide Contents:", slide_contents, height=200, key="slide_contents")
-            pptx_file = create_ppt(text, heading_rgb, heading_size, bg_rgb, content_rgb, content_size, heading_font, content_font)
+            
+            # Show slide contents with image previews
+            st.subheader("Slide Contents and Images:")
+
+            # Remove columns and display expanders vertically
+            for title, content_list in text.items():
+                with st.expander(f"📑 {title}"):
+                    # Show content
+                    st.markdown("**Content:**")
+                    for point in content_list:
+                        st.write(f"• {point}")
+                    
+                    # Show image preview
+                    st.markdown("**Image:**")
+                    with st.spinner('Loading...'):
+                        image_data = get_relevant_image(title)
+                        if image_data:
+                            # Use a smaller width for the preview
+                            st.image(
+                                image_data, 
+                                caption=f"Image for: {title}", 
+                                width=300  # Slightly wider since we have more space
+                            )
+                        else:
+                            st.info("No image found")
+            
+            # Generate PPT
+            pptx_file = create_ppt(
+                text, 
+                heading_rgb, 
+                heading_size, 
+                bg_rgb, 
+                content_rgb, 
+                content_size, 
+                heading_font, 
+                content_font,
+                None
+            )
+            
             st.download_button(
                 label="Download Presentation",
                 data=pptx_file,
