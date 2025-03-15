@@ -1,6 +1,6 @@
 import streamlit as st 
 from components import extract_pdf_text, get_openai_client, generate_slide_content, parse_slides  # Import custom functions
-from ppt import create_ppt_researchpaper
+from ppt import create_ppt, create_ppt  # Import PPT creation functions
 from PIL import Image 
 import io  
 import os
@@ -435,7 +435,7 @@ st.write("You can specify the slides you need for your presentation by listing t
 
 slide_titles_input = st.text_area(
     "Enter the titles of your slides, one per line:",
-    placeholder="e.g., Title\nIntroduction\nMethodology\nResults\nConclusion",
+    placeholder="e.g., Title Slide\nIntroduction\nMethodology\nResults\nConclusion",
     key="slide_titles"
 )
 
@@ -480,96 +480,73 @@ heading_rgb = tuple(int(heading_color.lstrip('#')[i:i+2], 16) for i in (0, 2, 4)
 content_rgb = tuple(int(content_color.lstrip('#')[i:i+2], 16) for i in (0, 2, 4))
 bg_rgb = tuple(int(background_color.lstrip('#')[i:i+2], 16) for i in (0, 2, 4))
 
-# Add this after the slide titles input section
+# Preview section
+st.header("Preview Settings")
+preview = f"""
+Selected Settings:
+- Heading Style: {heading_font}, {heading_size}px, {heading_color}
+- Content Style: {content_font}, {content_size}px, {content_color}
+- Background Color: {background_color}
+"""
+st.code(preview)
 
-# Edit Preview Section
-st.header("Edit Slide Content and Select Images")
-
-if 'parsed_slides' not in st.session_state:
-    st.session_state['parsed_slides'] = {}
-
-if 'selected_images' not in st.session_state:
-    st.session_state['selected_images'] = {}
-
-if slide_titles_input.strip() and uploaded_file is not None:
-    # Generate initial slide content if not already generated
-    if not st.session_state['parsed_slides']:
-        client = get_openai_client()
-        if client:
-            with st.spinner('Generating initial slide content...'):
-                slide_contents = generate_slide_content(client, text, "3", slide_titles)
-                st.session_state['parsed_slides'] = parse_slides(slide_contents)
-        else:
-            st.warning("Please enter a valid OpenAI API Key to generate slide content.")
-
-    # Display editable slide content and image selection
-    if st.session_state['parsed_slides']:
-        for idx, (title, content_list) in enumerate(st.session_state['parsed_slides'].items()):
-            st.subheader(f"Slide: {title}")
-            
-            # Editable content
-            edited_content = st.text_area(
-                f"Edit content for '{title}'",
-                value="\n".join(content_list),
-                key=f"edited_content_{idx}"
-            )
-            st.session_state['parsed_slides'][title] = edited_content.split("\n")
-            
-            # Image selection for this slide
-            if 'pdf_images' in st.session_state and st.session_state['pdf_images']:
-                st.write("**Select an image for this slide:**")
-                image_options = [f"Image {i+1}" for i in range(len(st.session_state['pdf_images']))]
-                selected_image = st.selectbox(
-                    f"Choose an image for '{title}'",
-                    options=image_options,
-                    index=idx % len(image_options),  # Default to cycling through images
-                    key=f"selected_image_{idx}"
-                )
-                st.session_state['selected_images'][title] = selected_image
-                
-                # Show preview of the selected image
-                selected_image_idx = int(selected_image.split(" ")[1]) - 1
-                st.image(
-                    st.session_state['pdf_images'][selected_image_idx],
-                    caption=f"Selected Image for {title}",
-                    width=300
-                )
-            else:
-                st.info("No images available for selection.")
-
-# Finalize and Download PPT
-if st.button("Finalize and Download Presentation", key="finalize_btn"):
-    if not st.session_state['parsed_slides']:
-        st.warning("Please generate slide content first.")
+# Generate button
+if st.button("Generate Presentation", key="generate_btn"):
+    client = get_openai_client()
+    
+    if not client:
+        st.warning("Please enter a valid OpenAI API Key")
     else:
-        with st.spinner('Creating your presentation...'):
-            # Prepare selected images for each slide
-            slide_images = []
-            for title in st.session_state['parsed_slides']:
-                slide_images.append(st.session_state['selected_images'][title])
+        with st.spinner('Processing your presentation...'):
+            slide_contents = generate_slide_content(client, text, "3", slide_titles)
+            parsed_slides = parse_slides(slide_contents)
             
-            # Generate PPT with edited content and selected images
-            pptx_file = create_ppt_researchpaper(
-                st.session_state['parsed_slides'],
-                heading_rgb,
-                heading_size,
-                bg_rgb,
-                content_rgb,
-                content_size,
-                heading_font,
+            # Show slide contents with PDF images
+            st.subheader("Slide Contents and Images:")
+            for idx, (title, content_list) in enumerate(parsed_slides.items()):
+                with st.expander(f"📑 {title}"):
+                    # Show content
+                    st.markdown("**Content:**")
+                    for point in content_list:
+                        st.write(f"• {point}")
+                    
+                    # Show image preview from PDF if available
+                    st.markdown("**Image:**")
+                    if 'pdf_images' in st.session_state and st.session_state['pdf_images']:
+                        # Use modulo to cycle through available images
+                        image_idx = idx % len(st.session_state['pdf_images'])
+                        image_data = st.session_state['pdf_images'][image_idx]
+                        st.image(
+                            image_data, 
+                            caption=f"Image from PDF for: {title}", 
+                            width=300
+                        )
+                    else:
+                        st.info("No images found in the PDF")
+            
+            # Generate PPT with PDF images
+            pptx_file = create_ppt(
+                parsed_slides, 
+                heading_rgb, 
+                heading_size, 
+                bg_rgb, 
+                content_rgb, 
+                content_size, 
+                heading_font, 
                 content_font,
-                slide_images
+                st.session_state.get('pdf_images', [])
             )
             
-            # Download button
+            # Download button and success message
             st.download_button(
                 label="Download Presentation",
                 data=pptx_file,
                 file_name="generated_presentation.pptx",
                 mime="application/vnd.openxmlformats-officedocument.presentationml.presentation",
-                key="download_btn_final"
+                key="download_btn"
             )
-            st.success("Presentation finalized and ready for download!")
+            st.success("Presentation generated successfully!")
+
 # Footer
 st.markdown("---")
 st.markdown("Created with ❤ for researchers")

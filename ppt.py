@@ -1,10 +1,11 @@
-from pptx import Presentation
-from pptx.util import Pt
-from pptx.dml.color import RGBColor
 from pptx.dml.fill import FillFormat
 import streamlit as st
 import io
 from components import get_relevant_image
+from pptx import Presentation
+from pptx.util import Inches, Pt
+from pptx.dml.color import RGBColor
+from io import BytesIO
 
 def create_ppt(slides_content, heading_rgb, heading_size, bg_rgb, content_rgb, content_size, heading_font, content_font, api_key=None):
     """Create PowerPoint presentation with slides and optional images"""
@@ -92,7 +93,99 @@ def create_ppt(slides_content, heading_rgb, heading_size, bg_rgb, content_rgb, c
     pptx_buffer.seek(0)
     return pptx_buffer
 
+def create_ppt_researchpaper(slides_content, heading_rgb, heading_size, bg_rgb, content_rgb, content_size, heading_font, content_font, slide_images):
+    """
+    Create a PowerPoint presentation with slides, content, and images.
 
+    Args:
+        slides_content (dict): Dictionary of slide titles and their content.
+        heading_rgb (tuple): RGB color for headings (e.g., (43, 58, 103)).
+        heading_size (int): Font size for headings.
+        bg_rgb (tuple): RGB color for slide background (e.g., (255, 255, 255)).
+        content_rgb (tuple): RGB color for content text (e.g., (0, 0, 0)).
+        content_size (int): Font size for content text.
+        heading_font (str): Font name for headings (e.g., "Arial").
+        content_font (str): Font name for content text (e.g., "Calibri").
+        slide_images (list): List of selected images for each slide (e.g., ["Image 1", "Image 2"]).
+
+    Returns:
+        BytesIO: In-memory PPTX file.
+    """
+    # Create a presentation object
+    prs = Presentation()
+
+    # Iterate through each slide
+    for idx, (title, content_list) in enumerate(slides_content.items()):
+        try:
+            # First slide uses Title Slide layout
+            if idx == 0:
+                slide_layout = prs.slide_layouts[0]  # Title Slide Layout
+                slide = prs.slides.add_slide(slide_layout)
+
+                title_shape = slide.shapes.title
+                subtitle = slide.placeholders[1]
+             # Assign title
+                title_shape.text = content_list[0]  # First line as title
+               # Assign subtitle (Joining remaining lines)
+                subtitle.text = "\n".join(content_list[1:])  # Joining rest of the content
+                for para in subtitle.text_frame.paragraphs:
+                    para.font.size = Pt(18)
+            else:
+                # Other slides use Title and Content layout
+                slide_layout = prs.slide_layouts[1]  # Title and Content layout
+                slide = prs.slides.add_slide(slide_layout)
+
+                # Set title and content
+                title_shape = slide.shapes.title
+                content_shape = slide.placeholders[1]
+
+                title_shape.text = title
+                content_shape.text = "\n".join(content_list)
+
+                # Apply styling to content
+                for paragraph in content_shape.text_frame.paragraphs:
+                    paragraph.font.size = Pt(content_size)
+                    paragraph.font.color.rgb = RGBColor(*content_rgb)
+                    paragraph.font.name = content_font
+                if slide_images and idx < len(slide_images) and slide_images[idx]:
+                    try:
+                    # Get the selected image index
+                        selected_image = slide_images[idx]
+                        selected_image_idx = int(selected_image.split(" ")[1]) - 1
+
+                    # Add the image to the slide
+                        image_data = st.session_state['pdf_images'][selected_image_idx]
+                    # image_data.seek(0)  # Reset image data pointer
+                        if image_data is not None:
+                            left = prs.slide_width - 4000000  # Align to the right
+                            top = prs.slide_height - 3100000  # Align to the bottom
+                            width = 3500000  # Adjust size
+                            height = 2500000  # Adjust size
+                            slide.shapes.add_picture(image_data, left, top, width=width, height=height)
+
+                    # Add the image to the slide
+                    except Exception as img_error:
+                        print(f"Error adding image to slide {title}: {str(img_error)}")
+
+            # Apply styling to title
+            title_shape.text_frame.paragraphs[0].font.size = Pt(heading_size)
+            title_shape.text_frame.paragraphs[0].font.color.rgb = RGBColor(*heading_rgb)
+            title_shape.text_frame.paragraphs[0].font.name = heading_font
+
+            # Set background color
+            background = slide.background
+            fill = background.fill
+            fill.solid()
+            fill.fore_color.rgb = RGBColor(*bg_rgb)
+        except Exception as slide_error:
+            print(f"Error processing slide {title}: {str(slide_error)}")
+
+    # Save the presentation to an in-memory buffer
+    pptx_buffer = BytesIO()
+    prs.save(pptx_buffer)
+    pptx_buffer.seek(0)
+
+    return pptx_buffer
 def main():
     st.title("Automated PowerPoint Presentation Generator")
 
