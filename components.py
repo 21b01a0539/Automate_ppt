@@ -78,6 +78,39 @@ Research Paper:{text[:4000]}"""}
         st.error(f"Error generating slide content: {e}")
         return ""
 
+
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+
+def extract_slide_titles_from_paper(text, client):
+    prompt = (
+        "You are an assistant that extracts clear, concise slide titles from a research paper. "
+        "Given the following text, extract a list of 5-10 appropriate slide titles that could be used to create a presentation. "
+        "Each title should summarize a key point or section of the paper.\n\n"
+        f"Research Paper Text:\n{text}\n\n"
+        "Slide Titles:"
+    )
+
+    try:
+        response = client.chat.completions.create(
+            model="gpt-4",
+            messages=[
+                {"role": "system", "content": "You're a helpful assistant."},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.5,
+            max_tokens=300
+        )
+
+        titles_raw = response.choices[0].message.content
+        titles = [line.strip("1234567890.:-• ").strip() for line in titles_raw.strip().split("\n") if line.strip()]
+        return titles
+    except Exception as e:
+        st.error(f"❌ Failed to generate titles: {e}")
+        return []
+
+
+
+
 def generate_slide_content_general(client, input_text, no_of_slides, sections):
     """
     Use OpenAI to generate slide content for general topics with improved parsing strategy.
