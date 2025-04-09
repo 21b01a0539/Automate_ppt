@@ -1,5 +1,6 @@
 import streamlit as st 
-from components import extract_pdf_text, get_openai_client, generate_slide_content, parse_slides  # Import custom functions
+from components import extract_pdf_text, get_openai_client, generate_slide_content, parse_slides, extract_slide_titles_from_paper
+  # Import custom functions
 from ppt import create_ppt_researchpaper
 from PIL import Image 
 import io  
@@ -80,6 +81,9 @@ def extract_and_display_images(uploaded_file, max_width=400):
                 continue
 
     pdf_document.close()
+
+import openai
+
 
 
 # Custom CSS matching speech_to_ppt.py
@@ -346,6 +350,7 @@ with st.sidebar:
     """)
 
 # File upload section
+client = get_openai_client()
 st.header("Upload Research Paper")
 uploaded_file = st.file_uploader("Upload a PDF file", type=["pdf"])
 
@@ -430,22 +435,62 @@ if uploaded_file is not None:
     except Exception as e:
         st.error(f"Unexpected error: {e}")
 # Slide structure selection with unique key
-st.header("Enter Slide Titles")
-st.write("You can specify the slides you need for your presentation by listing their titles below.")
+# st.header("Enter Slide Titles")
+# st.write("You can specify the slides you need for your presentation by listing their titles below.")
 
-slide_titles_input = st.text_area(
-    "Enter the titles of your slides, one per line:",
-    placeholder="e.g., Title\nIntroduction\nMethodology\nResults\nConclusion",
-    key="slide_titles"
-)
+# slide_titles_input = st.text_area(
+#     "Enter the titles of your slides, one per line:",
+#     placeholder="e.g., Title\nIntroduction\nMethodology\nResults\nConclusion",
+#     key="slide_titles"
+# )
 
-if slide_titles_input.strip():
-    slide_titles = [title.strip() for title in slide_titles_input.split("\n") if title.strip()]
-    st.write("### Selected Slide Titles:")
-    for i, title in enumerate(slide_titles, 1):
-        st.write(f"{i}. {title}")
+# if slide_titles_input.strip():
+#     slide_titles = [title.strip() for title in slide_titles_input.split("\n") if title.strip()]
+#     st.write("### Selected Slide Titles:")
+#     for i, title in enumerate(slide_titles, 1):
+#         st.write(f"{i}. {title}")
+# else:
+#     st.write("No slide titles entered yet.")
+
+        
+st.header("Step 2: Choose Slide Title Generation Method")
+slide_option = st.radio(
+            "How would you like to generate slide titles?",
+            ("Specify slide titles manually","Auto-generate from the research paper")
+        )
+
+slide_titles = []
+
+if slide_option == "Specify slide titles manually":
+            st.info("✍️ Enter the titles for each slide, one per line.")
+            slide_titles_input = st.text_area(
+                "Slide Titles:",
+                placeholder="e.g., Title Slide\nIntroduction\nMethodology\nResults\nConclusion"
+            )
+
+            if slide_titles_input.strip():
+                slide_titles = [title.strip() for title in slide_titles_input.split("\n") if title.strip()]
+                st.subheader("Your Slide Titles:")
+                for i, title in enumerate(slide_titles, 1):
+                    st.markdown(f"**{i}. {title}**")
+            else:
+                st.warning("⚠️ No slide titles entered yet.")
 else:
-    st.write("No slide titles entered yet.")
+            if client:
+                st.info("🤖 Extracting slide titles using AI...")
+                with st.spinner("Generating slide titles..."):
+                    slide_titles = extract_slide_titles_from_paper(text, client)
+
+                if slide_titles:
+                    st.subheader("Generated Slide Titles:")
+                    for i, title in enumerate(slide_titles, 1):
+                        st.markdown(f"**{i}. {title}**")
+                else:
+                    st.error("❌ Could not generate slide titles.")
+            else:
+                st.warning("⚠️ Please provide your OpenAI API key to auto-generate titles.")
+ # Implement this function
+
 
 # Design customization with unique keys
 st.header("Customize Design")
@@ -491,7 +536,7 @@ if 'parsed_slides' not in st.session_state:
 if 'selected_images' not in st.session_state:
     st.session_state['selected_images'] = {}
 
-if slide_titles_input.strip() and uploaded_file is not None:
+if uploaded_file is not None:
     # Generate initial slide content if not already generated
     if not st.session_state['parsed_slides']:
         client = get_openai_client()
